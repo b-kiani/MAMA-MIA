@@ -1,0 +1,16 @@
+numpy
+pandas
+scipy
+scikit-learn>=1.2
+torch>=2.1
+matplotlib
+lifelines
+pyyaml
+# data preparation (notebook 01)
+synapseclient
+SimpleITK
+openpyxl
+pyradiomics
+# development
+pytest
+nbformat

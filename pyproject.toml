@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mmonc"
+version = "0.1.0"
+description = "Multimodal breast MRI + clinical modelling for pCR prediction (MAMA-MIA)"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+  "numpy", "pandas", "scipy", "scikit-learn>=1.2", "torch>=2.1", "matplotlib", "lifelines", "pyyaml",
+]
+
+[project.optional-dependencies]
+data = ["synapseclient", "SimpleITK", "openpyxl", "pyradiomics"]
+dev = ["pytest", "nbformat"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+filterwarnings = ["ignore::DeprecationWarning"]

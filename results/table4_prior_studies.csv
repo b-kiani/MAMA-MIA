@@ -1,0 +1,6 @@
+study,year,data,inputs,external_validation,metric,value,source
+MAMA-MIA Challenge best team (PM),2026,"MAMA-MIA train 1506; European test 516",pretreatment DCE-MRI only,yes (3 European centres),balanced accuracy,0.558,https://arxiv.org/abs/2603.01250
+MAMA-MIA Challenge random baseline,2026,"European test 516",none,yes,balanced accuracy,0.504,https://arxiv.org/abs/2603.01250
+MAMA-MIA Challenge top-ranked team (pimed-lab),2026,"MAMA-MIA train 1506; European test 516",pretreatment DCE-MRI only,yes,balanced accuracy,0.496,https://arxiv.org/abs/2603.01250
+This study - clinical model,,,clinical,DUKE+ISPY1+NACT,AUC,TO BE FILLED FROM results/,
+This study - CARF,,,MRI + radiomics + clinical,DUKE+ISPY1+NACT,AUC,TO BE FILLED FROM results/,

@@ -1,0 +1,14 @@
+# Real run on a Kaggle T4 (16 GB). Starting values, not tuned results.
+dev: ISPY2
+folds: 5
+seeds: [0, 1, 2, 3, 4]
+epochs: 60
+patience: 12
+batch_size: 8
+lr: 0.0003
+widths: [32, 64, 128, 256]
+dim: 128
+deep_models: [image_only, concat, carf]
+n_boot: 2000
+margin: 0.03
+score_external: false   # set true only for notebook 05, after frozen.json is committed
