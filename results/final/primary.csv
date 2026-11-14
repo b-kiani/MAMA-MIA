@@ -1,0 +1,2 @@
+auc1,auc2,diff,se,z,p,ci_lo,ci_hi,verdict
+0.7009,0.7048,0.0039,0.0027,1.4229,0.1548,-0.0015,0.0092,no clinically meaningful added value (interval inside the margin)

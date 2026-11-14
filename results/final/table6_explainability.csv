@@ -1,0 +1,9 @@
+analysis,item,value
+Clinical anchor SHAP (mean |logit contribution|),hr,0.5455
+Clinical anchor SHAP (mean |logit contribution|),her2,0.4191
+Clinical anchor SHAP (mean |logit contribution|),age,0.05
+Grad-CAM tumour enrichment (carf; 1.0 = chance),"median, n=24",0.0
+"Deletion test: mean |logit change|, top 25% voxels removed",n=24,0.0008
+"CARF gate, external",mean,0.1496
+"CARF gate, development",mean,0.1485
+CARF with image removed equals clinical anchor,max |logit difference|,0.0

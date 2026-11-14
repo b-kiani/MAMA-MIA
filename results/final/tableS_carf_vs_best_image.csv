@@ -1,0 +1,2 @@
+best_image_model,auc1,auc2,diff,se,z,p,ci_lo,ci_hi
+Image only (EfficientNet-B0),0.5597,0.7048,0.1451,0.0396,3.6653,0.0002,0.0675,0.2227

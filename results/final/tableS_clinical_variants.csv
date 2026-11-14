@@ -1,0 +1,5 @@
+model,internal_auc,external_auc,ext_auc_value
+"Clinical (age, HR, HER2)",0.66 (0.62-0.69),0.70 (0.65-0.75),0.7009
+"Clinical extended (+ ER, PR, subtype)",0.65 (0.62-0.69),0.67 (0.62-0.72),0.6708
+Clinical + tumour size,0.71 (0.68-0.75),0.67 (0.63-0.73),0.6735
+Clinical + radiomics (L1),0.71 (0.68-0.75),0.66 (0.61-0.71),0.6594
