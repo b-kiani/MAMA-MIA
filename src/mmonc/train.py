@@ -73,6 +73,7 @@ def fit(model, train_ds, val_ds, *, epochs=30, lr=3e-4, weight_decay=1e-2, batch
     use_amp = device == "cuda"
     scaler = torch.amp.GradScaler(enabled=use_amp)
     start, best, bad, hist, best_state = 0, -1.0, 0, [], None
+    aux_weight = getattr(model, "aux_weight", aux_weight)
 
     if ckpt_path and os.path.exists(ckpt_path):
         ck = torch.load(ckpt_path, map_location=device, weights_only=False)

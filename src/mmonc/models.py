@@ -143,7 +143,8 @@ class CARF(nn.Module):
 
     def __init__(self, n_tab: int, dim: int = 128, heads: int = 4, widths=(32, 64, 128, 256),
                  p_drop_image: float = 0.3, n_phases: int = 3,
-                 gate_init: float = 0.0):
+                 gate_init: float = 0.0, use_gate: bool = True, use_time: bool = True,
+                 aux_weight: float | None = None):
         super().__init__()
         self.encoder = Encoder3D(widths=widths)
         self.proj = nn.Conv3d(self.encoder.out_dim, dim, 1)
@@ -157,6 +158,9 @@ class CARF(nn.Module):
         self.gate_head = nn.Linear(dim + 1, 1)
         nn.init.constant_(self.gate_head.bias, gate_init)  # 0 -> gate starts at 0.5
         self.p_drop_image = p_drop_image
+        self.use_gate, self.use_time = use_gate, use_time
+        if aux_weight is not None:  # read by train.fit; None keeps fit's default
+            self.aux_weight = aux_weight
         self.register_buffer("mu", torch.zeros(dim))
         self.register_buffer("var", torch.ones(dim))
         self.register_buffer("n_seen", torch.zeros(()))
@@ -164,7 +168,9 @@ class CARF(nn.Module):
     def image_tokens(self, image, dt):
         fmap = self.proj(self.encoder(image))  # (B, dim, d, h, w)
         tok = fmap.flatten(2).transpose(1, 2)  # (B, N, dim)
-        return tok + self.time(torch.log1p(dt) / 6.0).unsqueeze(1), fmap
+        if self.use_time:
+            tok = tok + self.time(torch.log1p(dt) / 6.0).unsqueeze(1)
+        return tok, fmap
 
     def shift_score(self, pooled):
         if self.training:  # running moments of the pooled image embedding
@@ -193,6 +199,8 @@ class CARF(nn.Module):
         cls = h[:, 0]
         delta = self.delta_head(cls).squeeze(1)
         gate = torch.sigmoid(self.gate_head(torch.cat([cls, shift], 1))).squeeze(1)
+        if not self.use_gate:  # ablation: plain residual, logit = z_clin + delta
+            gate = torch.ones_like(gate)
         gate = torch.where(drop, torch.zeros_like(gate), gate)  # no image -> clinical model
         return {"logit": batch["z_clin"] + gate * delta, "gate": gate, "delta": delta,
                 "attn": w[:, 0], "shift": shift.squeeze(1)}
@@ -235,4 +243,10 @@ def build(name: str, n_tab: int, widths=(32, 64, 128, 256), dim: int = 128, size
         return ConcatFusion(n_tab, widths)
     if name == "carf":
         return CARF(n_tab, dim=dim, widths=widths)
+    if name == "carf_nogate":
+        return CARF(n_tab, dim=dim, widths=widths, use_gate=False)
+    if name == "carf_notime":
+        return CARF(n_tab, dim=dim, widths=widths, use_time=False)
+    if name == "carf_noaux":
+        return CARF(n_tab, dim=dim, widths=widths, aux_weight=0.0)
     raise ValueError(name)

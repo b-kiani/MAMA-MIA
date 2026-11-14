@@ -1,0 +1,15 @@
+# Run 3a (fixed 2026-11-14, before any external result was seen): CARF component ablations.
+dev: ISPY2
+clinical: [age, hr, her2]
+folds: 5
+epochs: 60
+patience: 12
+batch_size: 16
+lr: 0.0003
+widths: [32, 64, 128, 256]
+dim: 128
+n_boot: 2000
+margin: 0.03
+score_external: true
+seeds: [0]
+deep_models: [carf_nogate, carf_notime, carf_noaux]

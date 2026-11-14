@@ -110,9 +110,11 @@ def run(data, out: str, cfg: dict | None = None, synthetic: bool = False, log=pr
                 fold_models[name] = model.cpu()
         label = {"image_only": "Image only (ResNet)", "concat": "Concatenation fusion", "carf": "CARF (proposed)",
                  "densenet121": "Image only (DenseNet-121)", "efficientnet_b0": "Image only (EfficientNet-B0)",
-                 "vit": "Image only (ViT)"}[name]
+                 "vit": "Image only (ViT)", "carf_nogate": "CARF without gate",
+                 "carf_notime": "CARF without timing embedding", "carf_noaux": "CARF without auxiliary loss"}[name]
+        label += cfg.get("label_suffix", "")
         oof[label], extp[label] = o, e / n_models
-        if name == "carf":
+        if name == "carf":  # gate summaries only for the main model
             extra["gate_dev"], extra["gate_ext"] = g_dev, g_ext / n_models
 
     # ---- 3. freeze thresholds on development, then score everything
@@ -180,9 +182,11 @@ def run(data, out: str, cfg: dict | None = None, synthetic: bool = False, log=pr
     for name, t in [("table1_cohort", t1), ("table2_internal", t2), ("table3_external", t3),
                     ("table5_ablation", t5), ("table6_explainability", t6), ("tableS_subgroups", sub)]:
         t.to_csv(os.path.join(out, name + ".csv"), index=False)
-    pd.DataFrame({"case_id": tb.case_id.iloc[ext], "collection": coll_ext, "y": y_ext, **extp}).to_csv(
+    gx = {"gate:CARF": extra["gate_ext"]} if "gate_ext" in extra else {}
+    gd = {"gate:CARF": extra["gate_dev"]} if "gate_dev" in extra else {}
+    pd.DataFrame({"case_id": tb.case_id.iloc[ext], "collection": coll_ext, "y": y_ext, **extp, **gx}).to_csv(
         os.path.join(out, "predictions_external.csv"), index=False)
-    pd.DataFrame({"case_id": tb.case_id.iloc[dev], "y": y_dev, **oof}).to_csv(
+    pd.DataFrame({"case_id": tb.case_id.iloc[dev], "y": y_dev, **oof, **gd}).to_csv(
         os.path.join(out, "predictions_internal_oof.csv"), index=False)
     summary = {"synthetic": synthetic, "note": SYNTHETIC_WATERMARK if synthetic else "",
                "n_dev": int(len(dev)), "n_ext": int(len(ext)), "events_ext": int(y_ext.sum()),

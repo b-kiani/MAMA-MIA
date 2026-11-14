@@ -117,3 +117,27 @@ def workflow(path, synthetic=False):
             ax.annotate("", xy=(i - 0.38, 0), xytext=(i - 0.62, 0), arrowprops=dict(arrowstyle="->", color="#4C72B0"))
     ax.set(xlim=(-0.6, len(steps) - 0.4), ylim=(-1, 1)); ax.axis("off")
     _save(fig, path, synthetic)
+
+
+def forest(sub, path, synthetic=False):
+    """Subgroup AUCs with 95% CIs, one row per (variable, level), one marker per model."""
+    if sub is None or len(sub) == 0:
+        return
+    keys = list(dict.fromkeys(zip(sub.variable, sub.level)))
+    models = list(dict.fromkeys(sub.model))
+    fig, ax = plt.subplots(figsize=(5.2, 0.28 * len(keys) + 0.8))
+    for j, (m, c) in enumerate(zip(models, COLORS)):
+        s = sub[sub.model == m].set_index(["variable", "level"])
+        ys, xs, lo, hi = [], [], [], []
+        for i, k in enumerate(keys):
+            if k in s.index:
+                r = s.loc[k]
+                ys.append(i + (j - (len(models) - 1) / 2) * 0.25); xs.append(r.auc); lo.append(r.auc - r.lo); hi.append(r.hi - r.auc)
+        ax.errorbar(xs, ys, xerr=[lo, hi], fmt="o", ms=3, color=c, label=m, lw=0.8)
+    ax.axvline(0.5, color="grey", ls="--", lw=0.8)
+    ax.set_yticks(range(len(keys)))
+    ax.set_yticklabels([f"{v}: {l}" for v, l in keys], fontsize=7)
+    ax.invert_yaxis()
+    ax.set_xlabel("AUC (95% CI)")
+    ax.legend(frameon=False, fontsize=7, loc="lower right")
+    _save(fig, path, synthetic)

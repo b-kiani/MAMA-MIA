@@ -1,0 +1,16 @@
+# Run 3b: CARF with seed 1 (seed variability).
+dev: ISPY2
+clinical: [age, hr, her2]
+folds: 5
+epochs: 60
+patience: 12
+batch_size: 16
+lr: 0.0003
+widths: [32, 64, 128, 256]
+dim: 128
+n_boot: 2000
+margin: 0.03
+score_external: true
+seeds: [1]
+deep_models: [carf]
+label_suffix: " seed 1"

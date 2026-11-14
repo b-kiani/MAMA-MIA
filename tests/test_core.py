@@ -185,3 +185,16 @@ def test_real_table_builder_parses_mamamia_columns(tmp_path):
     assert t.dt1.tolist() == [584.0, 132.0]
     assert t.rfs_event.iloc[0] == 1 and abs(t.rfs_months.iloc[0] - 407 / 30.44) < 1e-6
     assert np.isnan(t.rfs_event.iloc[1])
+
+
+@pytest.mark.parametrize("name", ["carf_nogate", "carf_notime", "carf_noaux"])
+def test_carf_ablations(name):
+    m = build(name, 6, (8, 16), 16).eval()
+    b = _batch()
+    out = m(b, drop_image=False)
+    assert out["logit"].shape == (4,)
+    assert torch.allclose(m(b, drop_image=True)["logit"], b["z_clin"])  # fallback holds for every variant
+    if name == "carf_nogate":
+        assert torch.all(out["gate"] == 1)
+    if name == "carf_noaux":
+        assert m.aux_weight == 0.0
