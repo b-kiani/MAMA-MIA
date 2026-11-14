@@ -1,36 +1,47 @@
 #!/usr/bin/env bash
-# Inspect the attached MAMA-MIA copy: layout, table columns, counts vs the dataset paper.
+# Compact inspection of the attached MAMA-MIA copy (narrow output for screen reading).
 set -euo pipefail
-python - <<'EOF'
+python -u - <<'EOF'
 import glob, os, json
 import pandas as pd
-roots = sorted(glob.glob("/kaggle/input/**/clinical_and_imaging_info.xlsx", recursive=True))
-print("tables found:", roots)
-root = os.path.dirname(roots[0])
-print("ROOT", root, sorted(os.listdir(root)))
-tb = pd.read_excel(roots[0])
-print("shape", tb.shape)
-print("COLUMNS", list(tb.columns))
-print(tb.head(3).T.to_string()[:4000])
-dcol = [c for c in tb.columns if c.lower() in ("dataset", "collection")][0]
-pcol = [c for c in tb.columns if c.lower() == "pcr"][0]
-print("\nPER COLLECTION (paper: ISPY2 980 316/664, DUKE 291 64/216, ISPY1 171 49/118, NACT 64 11/53)")
-print(tb.groupby(dcol)[pcol].agg(n="size", pcr1=lambda s: (s == 1).sum(), pcr0=lambda s: (s == 0).sum(), na=lambda s: s.isna().sum()))
-for c in tb.columns:
-    if tb[c].nunique() <= 8:
-        print(f"{c}: {tb[c].value_counts(dropna=False).to_dict()}")
-case = sorted(os.listdir(os.path.join(root, "images")))[0]
-print("\nIMAGE FOLDER", case, sorted(os.listdir(os.path.join(root, "images", case))))
-for d in sorted(os.listdir(os.path.join(root, "segmentations"))):
-    p = os.path.join(root, "segmentations", d)
-    print("SEG", d, len(os.listdir(p)), sorted(os.listdir(p))[:3])
-pi = sorted(glob.glob(os.path.join(root, "patient_info_files", "*")))
-print("\nPATIENT INFO", len(pi), pi[0])
-print(open(pi[0]).read()[:2500])
+pd.set_option("display.width", 52)
+X = glob.glob("/kaggle/input/**/clinical_and_imaging_info.xlsx", recursive=True)[0]
+R = os.path.dirname(X)
+tb = pd.read_excel(X)
+os.makedirs("/kaggle/working/inspect", exist_ok=True)
+tb.to_csv("/kaggle/working/inspect/clinical.csv", index=False)
+print("N", len(tb))
+g = tb.groupby("dataset")["pcr"]
+for k, s in g:
+    print(f"{k:6s} n={len(s):4d} pcr1={(s==1).sum():4d} pcr0={(s==0).sum():4d} na={s.isna().sum()}")
+print("paper: ISPY2 980 316/664 DUKE 291 64/216")
+print("       ISPY1 171 49/118  NACT 64 11/53")
+for c in ["age","hr","her2","menopause","multifocal_cancer","tumor_subtype","ethnicity","field_strength","manufacturer","view","site","nac_agent","days_to_follow_up","days_to_recurrence"]:
+    s = tb[c]
+    miss = s.isna().groupby(tb.dataset).mean().round(2).to_dict()
+    u = s.dropna().unique()
+    show = (list(map(str, u[:4])) if len(u) > 4 else list(map(str, u)))
+    print(f"{c}: k={len(u)} miss={miss}")
+    print("   ", ", ".join(x[:14] for x in show)[:48])
+print("acq_times ex:", str(tb.acquisition_times.iloc[0])[:44])
+print("acq_times ex:", str(tb[tb.dataset=='ISPY2'].acquisition_times.iloc[0])[:44])
+print("acq_date ex:", str(tb.acquisition_date.dropna().iloc[0])[:30])
+print("site per ISPY2:", tb[tb.dataset=="ISPY2"].site.nunique())
+print("phases:", tb.num_phases.value_counts().to_dict())
+for d in ["DUKE", "ISPY1", "ISPY2", "NACT"]:
+    cid = tb[tb.dataset == d].patient_id.iloc[0]
+    print(cid, sorted(os.listdir(os.path.join(R, "images", cid)))[:6])
+for d in sorted(os.listdir(os.path.join(R, "segmentations"))):
+    p = os.path.join(R, "segmentations", d)
+    print("SEG", d, len(os.listdir(p)), sorted(os.listdir(p))[0])
+pi = sorted(glob.glob(os.path.join(R, "patient_info_files", "*")))
+print("PI", len(pi), os.path.basename(pi[0]))
+j = json.load(open(pi[0]))
+def keys(o, pre=""):
+    for k, v in (o.items() if isinstance(o, dict) else []):
+        print(" ", pre + k, ":", str(v)[:30] if not isinstance(v, dict) else "")
+        if isinstance(v, dict): keys(v, pre + "  ")
+keys(j)
 for f in ["kfold_splits.csv", "train_test_splits.csv"]:
-    s = pd.read_csv(os.path.join(root, f)); print("\n", f, s.shape, list(s.columns)); print(s.head(3).to_string())
-import SimpleITK as sitk
-for f in sorted(os.listdir(os.path.join(root, "images", case)))[:3]:
-    im = sitk.ReadImage(os.path.join(root, "images", case, f))
-    print(f, im.GetSize(), [round(x, 2) for x in im.GetSpacing()])
+    s = pd.read_csv(os.path.join(R, f)); print(f, s.shape, list(s.columns)[:5])
 EOF
