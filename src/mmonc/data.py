@@ -62,6 +62,28 @@ def harmonise_table(raw: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def read_image(path: str, pixel_type=None):
+    """SimpleITK read that tolerates mangled extensions such as '.niigz' (seen in a Kaggle mirror).
+
+    The file is linked under a temporary '.nii.gz' or '.nii' name chosen from its magic bytes.
+    """
+    import tempfile
+
+    import SimpleITK as sitk
+
+    def _read(p):
+        return sitk.ReadImage(p, pixel_type) if pixel_type is not None else sitk.ReadImage(p)
+
+    if path.endswith((".nii.gz", ".nii", ".mha", ".nrrd")):
+        return _read(path)
+    with open(path, "rb") as f:
+        gz = f.read(2) == b"\x1f\x8b"
+    with tempfile.TemporaryDirectory() as d:
+        link = os.path.join(d, "img.nii.gz" if gz else "img.nii")
+        os.symlink(os.path.abspath(path), link)
+        return _read(link)
+
+
 def preprocess_case(phase_paths: list[str], mask_path: str, size: int = 64, margin: float = 0.25):
     """Resample to 1 mm, z-score over all phases, crop a cube around the mask.
 
@@ -78,8 +100,8 @@ def preprocess_case(phase_paths: list[str], mask_path: str, size: int = 64, marg
 
     if len(phase_paths) < 2:
         raise ValueError("need at least pre-contrast and one post-contrast phase")
-    phases = [sitk.GetArrayFromImage(resample(sitk.ReadImage(p, sitk.sitkFloat32), sitk.sitkLinear)) for p in phase_paths[:2]]
-    mask = sitk.GetArrayFromImage(resample(sitk.ReadImage(mask_path, sitk.sitkUInt8), sitk.sitkNearestNeighbor)) > 0
+    phases = [sitk.GetArrayFromImage(resample(read_image(p, sitk.sitkFloat32), sitk.sitkLinear)) for p in phase_paths[:2]]
+    mask = sitk.GetArrayFromImage(resample(read_image(mask_path, sitk.sitkUInt8), sitk.sitkNearestNeighbor)) > 0
     if not mask.any():
         raise ValueError(f"empty mask: {mask_path}")
     stack = np.stack(phases)

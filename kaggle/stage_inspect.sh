@@ -28,9 +28,15 @@ print("acq_times ex:", str(tb[tb.dataset=='ISPY2'].acquisition_times.iloc[0])[:4
 print("acq_date ex:", str(tb.acquisition_date.dropna().iloc[0])[:30])
 print("site per ISPY2:", tb[tb.dataset=="ISPY2"].site.nunique())
 print("phases:", tb.num_phases.value_counts().to_dict())
+import sys; sys.path.insert(0, "/kaggle/working/repo/src")
+from mmonc.data import read_image
 for d in ["DUKE", "ISPY1", "ISPY2", "NACT"]:
     cid = tb[tb.dataset == d].patient_id.iloc[0]
-    print(cid, sorted(os.listdir(os.path.join(R, "images", cid)))[:6])
+    fs = sorted(os.listdir(os.path.join(R, "images", cid)))
+    print(cid, len(fs), fs[0])
+    f0 = os.path.join(R, "images", cid, fs[0])
+    im = read_image(f0)
+    print("  magic", open(f0, "rb").read(2).hex(), im.GetSize(), [round(x, 2) for x in im.GetSpacing()])
 for d in sorted(os.listdir(os.path.join(R, "segmentations"))):
     p = os.path.join(R, "segmentations", d)
     print("SEG", d, len(os.listdir(p)), sorted(os.listdir(p))[0])
