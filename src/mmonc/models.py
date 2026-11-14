@@ -198,7 +198,37 @@ class CARF(nn.Module):
                 "attn": w[:, 0], "shift": shift.squeeze(1)}
 
 
-def build(name: str, n_tab: int, widths=(32, 64, 128, 256), dim: int = 128) -> nn.Module:
+class MonaiImageOnly(nn.Module):
+    """Image-only baselines from MONAI (3D DenseNet-121, EfficientNet-B0, ViT)."""
+
+    def __init__(self, kind: str, size: int = 64):
+        super().__init__()
+        from monai.networks import nets
+
+        if kind == "densenet121":
+            self.net = nets.DenseNet121(spatial_dims=3, in_channels=3, out_channels=1)
+        elif kind == "efficientnet_b0":
+            self.net = nets.EfficientNetBN("efficientnet-b0", pretrained=False, spatial_dims=3, in_channels=3, num_classes=1)
+        elif kind == "vit":
+            self.net = nets.ViT(in_channels=3, img_size=(size,) * 3, patch_size=(16,) * 3, hidden_size=384, mlp_dim=1536,
+                                num_layers=6, num_heads=6, classification=True, num_classes=1, post_activation=None)
+        else:
+            raise ValueError(kind)
+        self.kind = kind
+
+    def forward(self, batch):
+        out = self.net(batch["image"])
+        if isinstance(out, tuple):  # ViT returns (logits, hidden_states)
+            out = out[0]
+        return {"logit": out.reshape(-1)}
+
+
+MONAI_KINDS = ("densenet121", "efficientnet_b0", "vit")
+
+
+def build(name: str, n_tab: int, widths=(32, 64, 128, 256), dim: int = 128, size: int = 64) -> nn.Module:
+    if name in MONAI_KINDS:
+        return MonaiImageOnly(name, size)
     if name == "image_only":
         return ImageOnly(widths)
     if name == "concat":

@@ -154,3 +154,34 @@ def test_development_mode_writes_no_external_outputs(tmp_path):
     assert os.path.exists(os.path.join(out, "table2_internal.csv"))
     assert not os.path.exists(os.path.join(out, "table3_external.csv"))
     assert not os.path.exists(os.path.join(out, "predictions_external.csv"))
+
+
+@pytest.mark.parametrize("kind", ["densenet121", "efficientnet_b0", "vit"])
+def test_monai_backbones_forward(kind):
+    pytest.importorskip("monai")
+    b = _batch(n=2, size=64)
+    b["y"] = b["y"][:2]
+    out = build(kind, 6, size=64).eval()(b)
+    assert out["logit"].shape == (2,)
+
+
+def test_real_table_builder_parses_mamamia_columns(tmp_path):
+    pd = pytest.importorskip("pandas")
+    pytest.importorskip("openpyxl")
+    from mmonc.prep import build_table
+
+    raw = pd.DataFrame({
+        "patient_id": ["DUKE_001", "ISPY2_1"], "dataset": ["DUKE", "ISPY2"], "pcr": [0, 1], "age": [41, 50],
+        "hr": [0, 1], "er": [0, 1], "pr": [0, 0], "her2": [1, 0], "tumor_subtype": ["her2_pure", "luminal"],
+        "menopause": ["pre", "post"], "multifocal_cancer": [0, 1], "bilateral_breast_cancer": [0, 0],
+        "ethnicity": ["caucasian", "asian"], "bmi_group": [None, None], "manufacturer": ["GE", "SIEMENS"],
+        "field_strength": [1.5, 3.0], "view": ["axial", "axial"], "site": ["Duke", "UCSF"], "slice_thickness": [1.1, 2.0],
+        "num_phases": [4, 6], "acquisition_date": ["1984/10/13", None], "nac_agent": [None, None],
+        "acquisition_times": ["[0, 584, 714, 846]", "[0, 132, 223]"],
+        "days_to_follow_up": [2940.0, None], "days_to_recurrence": [407.0, None]})
+    raw.to_excel(tmp_path / "clinical_and_imaging_info.xlsx", index=False)
+    t = build_table(str(tmp_path))
+    assert list(t.menopausal) == [0.0, 1.0]
+    assert t.dt1.tolist() == [584.0, 132.0]
+    assert t.rfs_event.iloc[0] == 1 and abs(t.rfs_months.iloc[0] - 407 / 30.44) < 1e-6
+    assert np.isnan(t.rfs_event.iloc[1])

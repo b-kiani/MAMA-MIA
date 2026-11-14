@@ -9,6 +9,7 @@ description = "Multimodal breast MRI + clinical modelling for pCR prediction (MA
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
+  "monai>=1.3", "einops", "openpyxl", "SimpleITK",
   "numpy", "pandas", "scipy", "scikit-learn>=1.2", "torch>=2.1", "matplotlib", "lifelines", "pyyaml",
 ]
 

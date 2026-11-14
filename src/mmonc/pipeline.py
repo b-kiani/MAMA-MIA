@@ -25,7 +25,7 @@ from .data import InMemory, Prepared
 from .models import ClinicalAnchor, build, make_logreg
 from .train import Cases, fit, predict, seed_all
 
-CLIN = ["age", "hr", "her2", "menopausal", "multifocal"]
+CLIN = ["age", "hr", "her2", "menopausal", "multifocal"]  # synthetic default; real runs set cfg["clinical"]
 DEFAULTS = dict(dev="ISPY2", folds=5, seeds=[0], epochs=30, batch_size=8, lr=3e-4, widths=[32, 64, 128, 256],
                 dim=128, deep_models=["image_only", "concat", "carf"], n_boot=2000, margin=0.03, patience=8,
                 score_external=True)
@@ -52,7 +52,7 @@ def run(data, out: str, cfg: dict | None = None, synthetic: bool = False, log=pr
     if len(dev) == 0 or len(ext) == 0:
         raise ValueError("need a development collection and at least one external collection")
     y_dev, y_ext = y_all[dev], y_all[ext]
-    clin_cols = [c for c in CLIN if c in tb.columns]
+    clin_cols = [c for c in cfg.get("clinical", CLIN) if c in tb.columns]
     Xc = tb[clin_cols].to_numpy(float)
     Xr = np.asarray(data.radiomics, float)
     dt = tb[["dt0", "dt1", "dt2"]].to_numpy(float) if "dt1" in tb else np.zeros((len(tb), 3))
@@ -108,7 +108,9 @@ def run(data, out: str, cfg: dict | None = None, synthetic: bool = False, log=pr
                         g_ext += pe_["gate"]
                 n_models += 1
                 fold_models[name] = model.cpu()
-        label = {"image_only": "Image only", "concat": "Concatenation fusion", "carf": "CARF (proposed)"}[name]
+        label = {"image_only": "Image only (ResNet)", "concat": "Concatenation fusion", "carf": "CARF (proposed)",
+                 "densenet121": "Image only (DenseNet-121)", "efficientnet_b0": "Image only (EfficientNet-B0)",
+                 "vit": "Image only (ViT)"}[name]
         oof[label], extp[label] = o, e / n_models
         if name == "carf":
             extra["gate_dev"], extra["gate_ext"] = g_dev, g_ext / n_models
@@ -227,7 +229,8 @@ def _explain(data, fold_models, ds, ext, y_ext, extp, extra, anchor, Xc, clin_co
     for j in np.argsort(-np.abs(phi).mean(0))[:5]:
         rows.append({"analysis": "Clinical anchor SHAP (mean |logit contribution|)", "item": names[j],
                      "value": float(np.abs(phi[:, j]).mean())})
-    key = "carf" if "carf" in fold_models else next(iter(fold_models), None)
+    cands = [k for k in ("carf", "concat", "image_only") if k in fold_models]
+    key = cands[0] if cands else None
     if key is None:
         return pd.DataFrame(rows)
     model = fold_models[key]

@@ -84,7 +84,8 @@ def read_image(path: str, pixel_type=None):
         return _read(link)
 
 
-def preprocess_case(phase_paths: list[str], mask_path: str, size: int = 64, margin: float = 0.25):
+def preprocess_case(phase_paths: list[str], mask_path: str, size: int = 64, margin: float = 0.25,
+                    return_info: bool = False):
     """Resample to 1 mm, z-score over all phases, crop a cube around the mask.
 
     Returns (image[3, size, size, size] float16, mask[size, size, size] uint8).
@@ -125,22 +126,36 @@ def preprocess_case(phase_paths: list[str], mask_path: str, size: int = 64, marg
     t = F.interpolate(torch.from_numpy(crop)[None], size=(size,) * 3, mode="trilinear", align_corners=False)[0].numpy()
     m = F.interpolate(torch.from_numpy(mcrop[None, None].astype(np.float32)), size=(size,) * 3, mode="nearest")[0, 0].numpy()
     image = np.stack([t[0], t[1], t[1] - t[0]]).astype(np.float16)
+    if return_info:  # physical size is lost by the resize, so keep it as tabular features
+        info = {"tumour_mm3": float(mask.sum()), "extent_mm": float((hi - lo).max()), "crop_mm": float(2 * half),
+                "n_components_ok": int(mask.sum() > 0)}
+        return image, m.astype(np.uint8), info
     return image, m.astype(np.uint8)
 
 
 class Prepared:
-    """Folder of <case_id>.npz (image, mask) + table.csv + radiomics.csv."""
+    """Folder of <case_id>.npz (image, mask) + table.csv + radiomics.csv. Arrays are cached in RAM."""
 
-    def __init__(self, root: str):
+    def __init__(self, root: str, cache: bool = True):
         self.root = root
         self.table = pd.read_csv(os.path.join(root, "table.csv"))
+        self.radiomics_names = list(pd.read_csv(os.path.join(root, "radiomics.csv"), index_col=0, nrows=1).columns)
         self.radiomics = pd.read_csv(os.path.join(root, "radiomics.csv"), index_col=0).loc[self.table.case_id].to_numpy(np.float32)
+        self._img, self._msk = {}, {}
+        if cache:
+            for i, c in enumerate(self.table.case_id):
+                z = np.load(os.path.join(root, f"{c}.npz"))
+                self._img[i], self._msk[i] = z["image"], z["mask"]
 
     def image(self, i: int) -> np.ndarray:
-        return np.load(os.path.join(self.root, f"{self.table.case_id[i]}.npz"))["image"].astype(np.float32)
+        if i not in self._img:
+            self._img[i] = np.load(os.path.join(self.root, f"{self.table.case_id[i]}.npz"))["image"]
+        return self._img[i].astype(np.float32)
 
     def mask(self, i: int) -> np.ndarray:
-        return np.load(os.path.join(self.root, f"{self.table.case_id[i]}.npz"))["mask"]
+        if i not in self._msk:
+            self._msk[i] = np.load(os.path.join(self.root, f"{self.table.case_id[i]}.npz"))["mask"]
+        return self._msk[i]
 
 
 class InMemory:
