@@ -1,0 +1,17 @@
+# Run 1 on Kaggle (2026-11-14). Fixed before any model saw data.
+# Deviation from protocol: menopausal status and multifocality dropped from the clinical model,
+# because they are 100% / 94% missing in ISPY1 and 100% missing (menopause) in NACT.
+dev: ISPY2
+clinical: [age, hr, her2]
+folds: 5
+seeds: [0]
+epochs: 60
+patience: 12
+batch_size: 16
+lr: 0.0003
+widths: [32, 64, 128, 256]
+dim: 128
+deep_models: [image_only, densenet121, efficientnet_b0, vit, concat, carf]
+n_boot: 2000
+margin: 0.03
+score_external: false

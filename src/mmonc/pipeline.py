@@ -263,6 +263,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--config")
     ap.add_argument("--n", type=int, default=240)
+    ap.add_argument("--score-external", action="store_true", help="score external collections (run once, after freezing)")
     a = ap.parse_args()
     cfg = {}
     if a.config:
@@ -278,9 +279,14 @@ def main():
         cfg = {"epochs": 3, "folds": 3, "widths": [8, 16, 32], "dim": 32, "n_boot": 200, "patience": 3, **cfg}
     elif a.data:
         data = Prepared(a.data)
+        print(f"loaded {len(data.table)} cases, {data.radiomics.shape[1]} radiomic features", flush=True)
     else:
         ap.error("pass --synthetic or --data")
-    run(data, a.out, cfg, synthetic=a.synthetic)
+    if a.score_external:
+        cfg["score_external"] = True
+    t0 = time.time()
+    run(data, a.out, cfg, synthetic=a.synthetic, log=lambda *m: print(time.strftime("%H:%M:%S"), *m, flush=True))
+    print(f"total {(time.time() - t0) / 60:.1f} min", flush=True)
 
 
 if __name__ == "__main__":
