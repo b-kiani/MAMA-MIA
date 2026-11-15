@@ -55,6 +55,7 @@ def build_table(root):
             tt = [float(x) for x in tt]
             dt[i, : min(3, len(tt))] = tt[:3]
     t["dt0"], t["dt1"], t["dt2"] = dt[:, 0], dt[:, 1], dt[:, 2]
+    t["dt_last"] = [float(tt[-1]) if tt else np.nan for tt in times]
     # follow-up (days -> months); recurrence event = days_to_recurrence > 0 (0 means none recorded)
     fu = raw.days_to_follow_up / 30.44
     rec = raw.days_to_recurrence

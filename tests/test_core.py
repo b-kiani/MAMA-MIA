@@ -198,3 +198,115 @@ def test_carf_ablations(name):
         assert torch.all(out["gate"] == 1)
     if name == "carf_noaux":
         assert m.aux_weight == 0.0
+
+
+# ----------------------------------------------------------------------------- round 2
+def test_kinetic_features_recover_planted_kinetics():
+    from mmonc.prep2 import KIN_NAMES, kinetic_features
+
+    rng = np.random.default_rng(0)
+    g = np.stack(np.meshgrid(*[np.arange(40)] * 3, indexing="ij"))
+    m = np.sqrt(((g - 20) ** 2).sum(0)) < 10
+    pre = np.full((40,) * 3, 100.0) + rng.normal(0, 1, (40,) * 3)
+    early = pre + m * 150.0          # PE = 1.5 inside the tumour
+    late = pre + m * 100.0           # washout: SER = 1.5
+    f = kinetic_features(pre, early, late, m)
+    assert set(f) == set(KIN_NAMES)
+    assert f["pe_mean"] == pytest.approx(1.5, abs=0.1)
+    assert f["ftv_frac"] > 0.95 and f["frac_washout"] > 0.95
+    assert f["ser_mean"] == pytest.approx(1.5, abs=0.1)
+    assert abs(f["peri_pe_mean"]) < 0.1
+    f2 = kinetic_features(pre, early, early, m, has_late=False)
+    assert np.isnan(f2["ser_mean"]) and np.isnan(f2["frac_washout"])
+
+
+def test_round2_models_forward_and_carf25d_fallback():
+    from mmonc.models import CARF25D, Slice25D
+
+    b = _batch(n_tab=5)
+    b["image"] = torch.randn(4, 6, 16, 16, 16)
+    for name in ("image_only_k", "concat_k", "carf_k"):
+        assert build(name, 5, (8, 16), 16)(b)["logit"].shape == (4,)
+    s = dict(b, image=torch.randn(4, 12, 3, 32, 32))
+    assert Slice25D(pretrained=False)(s)["logit"].shape == (4,)
+    m = CARF25D(5, dim=16, pretrained=False).eval()
+    r = m(s, drop_image=True)
+    assert torch.allclose(r["logit"], s["z_clin"])  # no image -> exactly the clinical logit
+
+
+def test_round2_pipeline_runs_and_keeps_external_out_of_training(tmp_path):
+    import pandas as pd
+
+    from mmonc.pipeline2 import Runner
+    from mmonc.synthetic import make_cohort2
+
+    data = make_cohort2(96)
+    cfg = {"epochs": 1, "folds": 2, "control_folds": 2, "widths": [8, 16], "dim": 16, "patience": 1, "batch_size": 8,
+           "controls": ["hr", "perm"]}
+    seen = []
+    r = Runner(data, str(tmp_path), cfg, lambda *m: None)
+    orig = r.train_one
+
+    def spy(name, tr, va, *a, **k):
+        seen.append((set(tr) | set(va)))
+        return orig(name, tr, va, *a, **k)
+
+    r.train_one = spy
+    r.devext(["tabular", "image_only_k", "carf_k"], "t")
+    P = pd.read_csv(tmp_path / "preds_devext_t.csv")
+    ext = set(np.flatnonzero((data.table.collection != "ISPY2").to_numpy()))
+    assert all(not (s & ext) for s in seen)  # no external case ever reaches training or early stopping
+    for col in ("Clinical", "Clinical + FTV", "Clinical + kinetic radiomics", "Image only, kinetic 3D ResNet", "CARF, kinetic"):
+        assert P[col].between(0, 1).all()
+    assert set(P.set) == {"dev", "ext"}
+    r.controls("t")
+    C = pd.read_csv(tmp_path / "preds_controls_t.csv")
+    assert set(C.target) == {"hr", "perm"} and not ((C.target == "perm") & (C.set == "ext")).any()
+    seen.clear()
+    r.loco(["carf_k"], "t")
+    L = pd.read_csv(tmp_path / "preds_loco_t.csv")
+    assert len(L) == len(data.table) and L["CARF, kinetic"].between(0, 1).all()
+    held = [set(np.flatnonzero((data.table.collection == h).to_numpy())) for h in sorted(data.table.collection.unique())]
+    assert all(not (s & h) for s, h in zip(seen, held))  # the held-out collection is never trained on
+
+
+def test_deadline_skips_new_fits(tmp_path, monkeypatch):
+    from mmonc.pipeline2 import Runner
+    from mmonc.synthetic import make_cohort2
+
+    monkeypatch.setenv("MMONC_DEADLINE", "1")
+    r = Runner(make_cohort2(64), str(tmp_path), {"folds": 2, "widths": [8, 16], "dim": 16}, lambda *m: None)
+    r.devext(["tabular", "image_only_k"], "t")
+    import pandas as pd
+
+    P = pd.read_csv(tmp_path / "preds_devext_t.csv")
+    assert "Clinical" in P and "Image only, kinetic 3D ResNet" not in P
+
+
+def test_prep2_crop_and_pack_on_anisotropic_nifti(tmp_path):
+    sitk = pytest.importorskip("SimpleITK")
+    from mmonc.prep2 import crop_case, kinetic_features, pack
+
+    rng = np.random.default_rng(0)
+    shape, sp = (30, 90, 100), (0.7, 0.7, 2.5)  # z, y, x voxels; spacing x, y, z in mm
+    zz, yy, xx = np.meshgrid(*[np.arange(n) for n in shape], indexing="ij")
+    d = np.sqrt(((zz - 12) * 2.5) ** 2 + ((yy - 50) * 0.7) ** 2 + ((xx - 30) * 0.7) ** 2)
+    m = d < 9  # 18 mm sphere, off-centre
+    pre = 200 + rng.normal(0, 2, shape)
+    paths = []
+    for k, a in enumerate([pre, pre + m * 300, pre + m * 240]):
+        img = sitk.GetImageFromArray(a.astype(np.float32)); img.SetSpacing(sp)
+        p = str(tmp_path / f"c_{k:04d}.nii.gz"); sitk.WriteImage(img, p); paths.append(p)
+    mi = sitk.GetImageFromArray(m.astype(np.uint8)); mi.SetSpacing(sp)
+    mp = str(tmp_path / "c.nii.gz"); sitk.WriteImage(mi, mp)
+    ph, mk = crop_case(paths, mp)
+    assert ph.shape[0] == 3 and ph.shape[1] == ph.shape[2] == ph.shape[3] == mk.shape[0]
+    assert 44 <= mk.shape[0] <= 52                       # 48 mm minimum cube on a 1 mm grid
+    assert mk.sum() == pytest.approx(4 / 3 * np.pi * 9 ** 3, rel=0.15)  # volume preserved in mm^3
+    f = kinetic_features(ph[0], ph[1], ph[2], mk)
+    assert f["pe_mean"] == pytest.approx(1.5, abs=0.15) and f["ser_mean"] == pytest.approx(1.25, abs=0.1)
+    vol, m64, sl = pack(ph, mk, size=32, plane=48)
+    assert vol.shape == (3, 32, 32, 32) and sl.shape == (12, 3, 48, 48) and m64.any()
+    v0 = vol[0].astype(np.float32)
+    assert float(v0[v0 > 0.5].mean()) == pytest.approx(1.0, abs=0.05)  # pre-contrast scaled to about 1 (zeros = padding)
+    assert all(float(s[1].max()) > 2.0 for s in sl.astype(np.float32))  # every slice passes through enhancing tumour

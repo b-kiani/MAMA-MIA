@@ -89,9 +89,9 @@ class Encoder3D(nn.Module):
 
 
 class ImageOnly(nn.Module):
-    def __init__(self, widths=(32, 64, 128, 256)):
+    def __init__(self, widths=(32, 64, 128, 256), in_ch: int = 3):
         super().__init__()
-        self.encoder = Encoder3D(widths=widths)
+        self.encoder = Encoder3D(in_ch, widths=widths)
         self.head = nn.Linear(self.encoder.out_dim, 1)
 
     def forward(self, batch):
@@ -102,9 +102,9 @@ class ImageOnly(nn.Module):
 class ConcatFusion(nn.Module):
     """Common baseline: pooled image features concatenated with tabular features."""
 
-    def __init__(self, n_tab: int, widths=(32, 64, 128, 256), hidden: int = 128):
+    def __init__(self, n_tab: int, widths=(32, 64, 128, 256), hidden: int = 128, in_ch: int = 3):
         super().__init__()
-        self.encoder = Encoder3D(widths=widths)
+        self.encoder = Encoder3D(in_ch, widths=widths)
         self.tab = nn.Sequential(nn.Linear(2 * n_tab, hidden), nn.ReLU())
         self.head = nn.Sequential(nn.Linear(self.encoder.out_dim + hidden, hidden), nn.ReLU(), nn.Dropout(0.2), nn.Linear(hidden, 1))
 
@@ -144,10 +144,9 @@ class CARF(nn.Module):
     def __init__(self, n_tab: int, dim: int = 128, heads: int = 4, widths=(32, 64, 128, 256),
                  p_drop_image: float = 0.3, n_phases: int = 3,
                  gate_init: float = 0.0, use_gate: bool = True, use_time: bool = True,
-                 aux_weight: float | None = None):
+                 aux_weight: float | None = None, in_ch: int = 3):
         super().__init__()
-        self.encoder = Encoder3D(widths=widths)
-        self.proj = nn.Conv3d(self.encoder.out_dim, dim, 1)
+        self._make_encoder(in_ch, widths, dim)
         self.time = nn.Sequential(nn.Linear(n_phases, dim), nn.GELU(), nn.Linear(dim, dim))
         self.tab = TabTokens(n_tab, dim)
         self.attn = nn.MultiheadAttention(dim, heads, batch_first=True, dropout=0.1)
@@ -164,6 +163,10 @@ class CARF(nn.Module):
         self.register_buffer("mu", torch.zeros(dim))
         self.register_buffer("var", torch.ones(dim))
         self.register_buffer("n_seen", torch.zeros(()))
+
+    def _make_encoder(self, in_ch, widths, dim):
+        self.encoder = Encoder3D(in_ch, widths=widths)
+        self.proj = nn.Conv3d(self.encoder.out_dim, dim, 1)
 
     def image_tokens(self, image, dt):
         fmap = self.proj(self.encoder(image))  # (B, dim, d, h, w)
@@ -231,7 +234,63 @@ class MonaiImageOnly(nn.Module):
         return {"logit": out.reshape(-1)}
 
 
+class SliceEncoder(nn.Module):
+    """ImageNet-pretrained 2D ResNet applied to every slice. Input (B, S, 3, P, P) -> (B, S, 512)."""
+
+    def __init__(self, pretrained: bool = True):
+        super().__init__()
+        import torchvision
+
+        self.pretrained = False
+        try:
+            net = torchvision.models.resnet18(weights="IMAGENET1K_V1" if pretrained else None)
+            self.pretrained = pretrained
+        except Exception as e:  # noqa: BLE001  (no internet): say so loudly, never silently
+            print(f"PRETRAINED_WEIGHTS_UNAVAILABLE {e!r}; using random initialisation", flush=True)
+            net = torchvision.models.resnet18(weights=None)
+        net.fc = nn.Identity()
+        self.net, self.out_dim = net, 512
+
+    def forward(self, x):
+        B, S = x.shape[:2]
+        return self.net(x.flatten(0, 1)).view(B, S, -1)
+
+
+class Slice25D(nn.Module):
+    """2.5D image-only model: pretrained slice encoder + attention pooling over 12 tumour slices."""
+
+    def __init__(self, pretrained: bool = True, hidden: int = 128):
+        super().__init__()
+        self.encoder = SliceEncoder(pretrained)
+        self.att = nn.Sequential(nn.Linear(512, hidden), nn.Tanh(), nn.Linear(hidden, 1))
+        self.head = nn.Sequential(nn.Dropout(0.2), nn.Linear(512, 1))
+
+    def forward(self, batch):
+        f = self.encoder(batch["image"])
+        w = torch.softmax(self.att(f), 1)
+        return {"logit": self.head((w * f).sum(1)).squeeze(1)}
+
+
+class CARF25D(CARF):
+    """CARF whose image tokens are the 12 slice embeddings of the pretrained 2.5D encoder."""
+
+    def __init__(self, n_tab: int, dim: int = 128, pretrained: bool = True, **kw):
+        self._pretrained = pretrained
+        super().__init__(n_tab, dim=dim, **kw)
+
+    def _make_encoder(self, in_ch, widths, dim):
+        self.encoder = SliceEncoder(self._pretrained)
+        self.proj = nn.Linear(512, dim)
+
+    def image_tokens(self, image, dt):
+        tok = self.proj(self.encoder(image))
+        if self.use_time:
+            tok = tok + self.time(torch.log1p(dt) / 6.0).unsqueeze(1)
+        return tok, None
+
+
 MONAI_KINDS = ("densenet121", "efficientnet_b0", "vit")
+SLICE_MODELS = ("s25d", "carf_25d")  # these read data.slices(i); every other model reads the 3D volume
 
 
 def build(name: str, n_tab: int, widths=(32, 64, 128, 256), dim: int = 128, size: int = 64) -> nn.Module:
@@ -249,4 +308,15 @@ def build(name: str, n_tab: int, widths=(32, 64, 128, 256), dim: int = 128, size
         return CARF(n_tab, dim=dim, widths=widths, use_time=False)
     if name == "carf_noaux":
         return CARF(n_tab, dim=dim, widths=widths, aux_weight=0.0)
+    # round 2: kinetic inputs (pre, early, late, early-pre, late-early, mask) and pretrained 2.5D
+    if name == "image_only_k":
+        return ImageOnly(widths, in_ch=6)
+    if name == "concat_k":
+        return ConcatFusion(n_tab, widths, in_ch=6)
+    if name == "carf_k":
+        return CARF(n_tab, dim=dim, widths=widths, in_ch=6)
+    if name == "s25d":
+        return Slice25D()
+    if name == "carf_25d":
+        return CARF25D(n_tab, dim=dim)
     raise ValueError(name)

@@ -84,3 +84,20 @@ def make_cohort(n: int = 400, size: int = 24, seed: int = 0, img_effect: float =
         }
     )
     return table, images, masks
+
+
+def make_cohort2(n: int = 96, size: int = 16, plane: int = 32, seed: int = 0):
+    """Round-2 test cohort (three phases, slices, kinetic features). Code test only."""
+    from .pipeline2 import InMemory2
+    from .prep2 import KIN_NAMES
+
+    tb, im, mk = make_cohort(n, size=size, seed=seed)
+    rng = np.random.default_rng(seed + 1)
+    pre, post = im[:, 0] * 0.1 + 1.0, im[:, 1] * 0.1 + 1.0
+    late = post + rng.normal(0, 0.02, post.shape).astype(np.float32)
+    vols = [np.stack([pre[i], post[i], late[i]]).astype(np.float16) for i in range(n)]
+    sls = [rng.normal(1, 0.1, (12, 3, plane, plane)).astype(np.float16) for _ in range(n)]
+    kin = rng.normal(0, 1, (n, len(KIN_NAMES))).astype(np.float32)
+    kin[rng.random(kin.shape) < 0.05] = np.nan
+    tb["dt_last"] = tb["dt2"]
+    return InMemory2(tb, vols, [m for m in mk], sls, kin)
