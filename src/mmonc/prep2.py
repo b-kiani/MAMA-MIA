@@ -6,6 +6,7 @@ Per case it writes <case>.npz with
   vol    (3, S, S, S) float16   pre, early, late, each divided by the mean pre-contrast signal of the crop
   mask   (S, S, S) uint8
   sl     (12, 3, P, P) float16  four slices through the tumour in each of the three planes
+  slm    (12, P, P) uint8       the tumour mask on those slices
 and it writes table.csv (as round 1, plus n_phases and dt_late) and kinetics.csv.
 Resumable: cases already written are skipped.
 """
@@ -122,13 +123,14 @@ def pack(ph, m, size=64, plane=112, has_late=True):
     mk = F.interpolate(torch.from_numpy(m[None, None].astype(np.float32)), size=(size,) * 3, mode="nearest")[0, 0].numpy().astype(np.uint8)
     big = F.interpolate(x, size=(plane,) * 3, mode="trilinear", align_corners=False)[0].numpy()
     mb = F.interpolate(torch.from_numpy(m[None, None].astype(np.float32)), size=(plane,) * 3, mode="nearest")[0, 0].numpy() > 0
-    sl = []
+    sl, slm = [], []
     for ax in range(3):
         pos = np.flatnonzero(mb.any(axis=tuple(i for i in range(3) if i != ax)))
         for q in (0.2, 0.4, 0.6, 0.8):
             k = int(pos[min(len(pos) - 1, int(q * len(pos)))])
             sl.append(np.take(big, k, axis=ax + 1))
-    return vol, mk, np.stack(sl).astype(np.float16)
+            slm.append(np.take(mb, k, axis=ax))
+    return vol, mk, np.stack(sl).astype(np.float16), np.stack(slm).astype(np.uint8)
 
 
 def _one(args):
@@ -140,8 +142,8 @@ def _one(args):
     ph, m = crop_case(pick, _file(os.path.join(root, "segmentations", "expert"), cid))
     has_late = len(files) > 2
     kin = kinetic_features(ph[0], ph[1], ph[2], m, has_late)
-    vol, mk, sl = pack(ph, m, size, has_late=has_late)
-    return cid, vol, mk, sl, kin, len(files)
+    vol, mk, sl, slm = pack(ph, m, size, has_late=has_late)
+    return cid, vol, mk, sl, slm, kin, len(files)
 
 
 def main():
@@ -166,8 +168,8 @@ def main():
         for f in as_completed(futs):
             c = futs[f]
             try:
-                cid, vol, mk, sl, kin, n = f.result()
-                np.savez_compressed(os.path.join(a.out, f"{cid}.npz"), vol=vol, mask=mk, sl=sl, n_phases=np.int16(n),
+                cid, vol, mk, sl, slm, kin, n = f.result()
+                np.savez_compressed(os.path.join(a.out, f"{cid}.npz"), vol=vol, mask=mk, sl=sl, slm=slm, n_phases=np.int16(n),
                                     kin=np.array([kin[k] for k in KIN_NAMES], np.float32))
             except Exception as e:  # noqa: BLE001
                 fails.append((c, repr(e)[:160]))

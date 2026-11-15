@@ -16,5 +16,5 @@ python -u -m mmonc.pipeline2 --data $P --out $O --exp devext --models tabular --
   python -u -m mmonc.pipeline2 --data $P --out $O --exp controls --tag g1 || echo "g1 controls FAILED"
   python -u -m mmonc.pipeline2 --data $P --out $O --exp devext --models carf_25d --tag g1b || echo "g1b FAILED" ) &
 wait
-python -m mmonc.export2 --dir $O --extra $P/table.csv $P/kinetics.csv $P/failures.csv
+python -m mmonc.export2 --dir $O --samples-from $P --extra $P/table.csv $P/kinetics.csv $P/failures.csv
 rm -rf $P/*.npz $O/ck

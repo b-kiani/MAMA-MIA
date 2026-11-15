@@ -41,11 +41,40 @@ def decode(text: str, out_dir: str):
     return done
 
 
+def samples(data_dir, out_path, per_class=1):
+    """Example cases for a figure: per collection, the pCR and the non-pCR case of median tumour volume.
+
+    Saves the in-plane slice through the tumour (pre, early, late; signal relative to pre-contrast) and its mask.
+    """
+    import numpy as np
+    import pandas as pd
+
+    t = pd.read_csv(os.path.join(data_dir, "table.csv"))
+    k = pd.read_csv(os.path.join(data_dir, "kinetics.csv"), index_col=0)
+    t = t[t.pcr.notna() & t.hr.notna() & t.her2.notna()].copy()
+    t["v"] = k.loc[t.case_id, "log_vol_mm3"].to_numpy()
+    img, msk, meta = [], [], []
+    for (c, y), g in t.groupby(["collection", "pcr"]):
+        g = g.assign(d=(g.v - g.v.median()).abs()).sort_values(["d", "case_id"]).head(per_class)
+        for r in g.itertuples():
+            z = np.load(os.path.join(data_dir, f"{r.case_id}.npz"))
+            img.append(z["sl"][1]); msk.append(z["slm"][1])
+            meta.append(f"{r.case_id},{c},{int(y)},{int(r.hr)},{int(r.her2)},{r.age:.0f},{r.field_strength},{r.view}")
+    np.savez_compressed(out_path, img=np.stack(img), msk=np.stack(msk), meta=np.array(meta))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", required=True)
     ap.add_argument("--extra", nargs="*", default=[])
+    ap.add_argument("--samples-from")
     a = ap.parse_args()
+    if a.samples_from:
+        try:
+            samples(a.samples_from, os.path.join(a.dir, "samples.npz"))
+            emit(os.path.join(a.dir, "samples.npz"))
+        except Exception as e:  # noqa: BLE001
+            print("SAMPLES FAILED", repr(e), flush=True)
     for f in sorted(glob.glob(os.path.join(a.dir, "*.csv"))) + list(a.extra):
         if os.path.exists(f):
             emit(f)

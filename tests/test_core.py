@@ -305,8 +305,9 @@ def test_prep2_crop_and_pack_on_anisotropic_nifti(tmp_path):
     assert mk.sum() == pytest.approx(4 / 3 * np.pi * 9 ** 3, rel=0.15)  # volume preserved in mm^3
     f = kinetic_features(ph[0], ph[1], ph[2], mk)
     assert f["pe_mean"] == pytest.approx(1.5, abs=0.15) and f["ser_mean"] == pytest.approx(1.25, abs=0.1)
-    vol, m64, sl = pack(ph, mk, size=32, plane=48)
+    vol, m64, sl, slm = pack(ph, mk, size=32, plane=48)
     assert vol.shape == (3, 32, 32, 32) and sl.shape == (12, 3, 48, 48) and m64.any()
+    assert slm.shape == (12, 48, 48) and all(x.any() for x in slm)
     v0 = vol[0].astype(np.float32)
     assert float(v0[v0 > 0.5].mean()) == pytest.approx(1.0, abs=0.05)  # pre-contrast scaled to about 1 (zeros = padding)
     assert all(float(s[1].max()) > 2.0 for s in sl.astype(np.float32))  # every slice passes through enhancing tumour
