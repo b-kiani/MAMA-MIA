@@ -28,8 +28,10 @@ def ci(a, lo, hi, nd=2):
     return f"{f(a)} ({f(lo)}--{f(hi)})".replace("--$-$", " to $-$")
 
 
-def table(caption, label, cols, rows, spec, note=None, size="\\scriptsize", star=False):
-    env = "table*" if star else "table"
+def table(caption, label, cols, rows, spec, note=None, size="\\footnotesize", star=False):
+    env = "table"
+    if star:
+        size = "\\scriptsize"
     out = [f"\\begin{{{env}}}[!htbp]", f"\\caption{{{caption}}}", f"\\label{{{label}}}", "\\centering", size,
            "\\setlength{\\tabcolsep}{3pt}", f"\\begin{{tabular}}{{{spec}}}", "\\toprule", " & ".join(cols) + "\\\\", "\\midrule"]
     out += [" & ".join(r) + "\\\\" for r in rows]
@@ -64,7 +66,7 @@ for t in ["hr", "her2", "field3t", "perm"]:
 for m, nm in [("Clinical", "clinical"), ("CARF (proposed)", "CARF")]:
     r = site.loc[m]
     rows.append([f"I-SPY2 sites ($k$={int(r.k)}), pooled AUC, {nm}", f"{ci(r.pooled_auc, r.lo, r.hi)}; $I^2$ {r.i2*100:.0f}\\%"])
-parts.append(table("Summary of Secondary Analyses", "tab:s_secondary", ["Analysis", "Result (95\\% CI)"], rows, "p{4.2cm}p{4.2cm}",
+parts.append(table("Summary of Secondary Analyses", "tab:s_secondary", ["Analysis", "Result (95\\% CI)"], rows, "p{7.2cm}p{7.6cm}",
                    "LOCO: leave-one-collection-out; $\\Delta$: AUC difference from the clinical model; LR: likelihood-ratio test; stacking: fivefold cross-validated logistic model of clinical and image logits fitted within the external data (optimistic bound)."))
 
 # S5: per-collection external AUC, round 1 and round 2

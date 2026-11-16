@@ -24,6 +24,8 @@ W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 NS = {"w": W, "wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
       "a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
 EMU_IN = 914400
+ONECOL = True      # single-column manuscript: 1-inch margins, 11-pt type, figures and tables at text width
+TEXT_IN = 6.5
 
 
 def q(tag):
@@ -52,6 +54,21 @@ def preprocess(tex, prefix=""):
         lm = re.search(r"\\label\{([^}]*)\}", body)
         if lm:
             labels[lm.group(1)] = (prefix + roman[n[key] - 1]) if key == "table" and not prefix else f"{prefix}{n[key]}"
+    if not prefix:
+        sec = sub = 0
+        out, pos = [], 0
+        for m in re.finditer(r"\\(section|subsection)\{([^}]*)\}(\s*\\label\{([^}]*)\})?", tex):
+            if m.group(1) == "section":
+                sec, sub = sec + 1, 0
+                num, title = roman[sec - 1], f"{roman[sec - 1]}. {m.group(2)}"
+            else:
+                sub += 1
+                num, title = f"{roman[sec - 1]}-{chr(64 + sub)}", f"{chr(64 + sub)}. {m.group(2)}"
+            if m.group(4):
+                labels[m.group(4)] = num
+            out.append(tex[pos:m.start()] + f"\\{m.group(1)}{{{title}}}")
+            pos = m.end()
+        tex = "".join(out) + tex[pos:]
     tex = re.sub(r"\\ref\{([^}]*)\}", lambda m: labels.get(m.group(1), "?"), tex)
     tex = tex.replace("~", " ")
     tex = tex.replace("$<$", "\\textless{}").replace("$>$", "\\textgreater{}")
@@ -113,6 +130,10 @@ def preprocess(tex, prefix=""):
         name = g.group(1)
         src = os.path.join(FIG_SRC.get(name, "figures"), name + ".png")
         w = "6.9in" if star else "3.4in"
+        if ONECOL:
+            fr = re.search(r"width=([\d.]*)\\(?:linewidth|textwidth|columnwidth)", g.group(0))
+            w = f"{TEXT_IN * float(fr.group(1) or 1) if fr else TEXT_IN:.2f}in"
+            star = ""
         body = body.replace(g.group(0), f"\\includegraphics[width={w}]{{{src}}}")
         cap = re.search(r"\\caption\{(.*)\}\s*\\label", body, re.S)
         k = labels.get(re.search(r"\\label\{([^}]*)\}", body).group(1), "")
@@ -124,7 +145,7 @@ def preprocess(tex, prefix=""):
     tex = re.sub(r"\\begin\{figure(\*?)\}\[[^\]]*\](.*?)\\end\{figure\*?\}", fig, tex, flags=re.S)
     # tables: caption above, markers for full-width
     def tab(m):
-        star, body = m.group(1), m.group(2)
+        star, body = ("" if ONECOL else m.group(1)), m.group(2)
         cap = re.search(r"\\caption\{([^}]*)\}", body).group(1)
         k = labels.get(re.search(r"\\label\{([^}]*)\}", body).group(1), "")
         body = re.sub(r"\\caption\{[^}]*\}", "", body)
@@ -133,8 +154,8 @@ def preprocess(tex, prefix=""):
             body = body.replace(cmd, "")
         body = re.sub(r"\\setlength\{\\tabcolsep\}\{[^}]*\}", "", body)
         # footnote rows spanning all columns -> paragraph below the table
-        notes = re.findall(r"\\multicolumn\{\d+\}\{p\{[^}]*\}\}\{\\(?:tiny|scriptsize)\s*(.*?)\}\\\\", body, re.S)
-        body = re.sub(r"\\multicolumn\{\d+\}\{p\{[^}]*\}\}\{\\(?:tiny|scriptsize)\s*(.*?)\}\\\\", "", body, flags=re.S)
+        notes = re.findall(r"\\multicolumn\{\d+\}\{p\{[^}]*\}\}\{\s*(?:\\(?:tiny|scriptsize))?\s*(.*?)\}\\\\", body, re.S)
+        body = re.sub(r"\\multicolumn\{\d+\}\{p\{[^}]*\}\}\{\s*(?:\\(?:tiny|scriptsize))?\s*(.*?)\}\\\\", "", body, flags=re.S)
         body = re.sub(r"\\multicolumn\{\d+\}\{l\}\{\\scriptsize\s*(.*?)\}\\\\", "", body, flags=re.S)
         note = "\n\n" + "\n\n".join(f"CAPNOTE {x.strip()}" for x in notes) if notes else ""
         mark = "FULLWIDTHSTART\n\n" if star else ""
@@ -158,6 +179,10 @@ def sect(cols, last=False):
         mar.set(q(f"w:{k}"), v)
     c = etree.SubElement(s, q("w:cols"))
     c.set(q("w:num"), str(cols)); c.set(q("w:space"), "288")
+    if ONECOL:
+        c.set(q("w:num"), "1")
+        for k in ("top", "right", "bottom", "left"):
+            mar.set(q(f"w:{k}"), "1440")
     return s
 
 
@@ -236,7 +261,7 @@ def layout(docx_in, docx_out, title_paras):
         if k.tag == q("w:p") and text_of(k).startswith(title_paras):
             first_body = k
             break
-    if first_body is not None:
+    if first_body is not None and not ONECOL:
         end_section_at(first_body.getprevious(), 1)
     # caption markers -> caption styles
     styles = {"CAPFIG": ("ImageCaption", "both"), "CAPTAB": ("TableCaption", "center"), "CAPNOTE": ("ImageCaption", "both")}
@@ -279,8 +304,11 @@ def layout(docx_in, docx_out, title_paras):
         for r in rows:
             for j, tc in enumerate(r.findall(q("w:tc"))):
                 words = text_of_el(tc).split()
-                lens[j] = max(lens[j], min(26, max([len(w) for w in words] + [0]) + 2), min(26, len(text_of_el(tc)) // 2))
-        avail = 10454 if tbl in wide_tables else 5083
+                if ONECOL:
+                    lens[j] = max(lens[j], min(30, len(text_of_el(tc)) + 2))
+                else:
+                    lens[j] = max(lens[j], min(26, max([len(w) for w in words] + [0]) + 2), min(26, len(text_of_el(tc)) // 2))
+        avail = int(TEXT_IN * 1440) if ONECOL else (10454 if tbl in wide_tables else 5083)
         widths = [int(avail * l / sum(lens)) for l in lens]
         grid = tbl.find(q("w:tblGrid"))
         for e in list(grid):
@@ -314,7 +342,7 @@ def layout(docx_in, docx_out, title_paras):
             rpr = r.find(q("w:rPr"))
             if rpr is None:
                 rpr = etree.Element(q("w:rPr")); r.insert(0, rpr)
-            set_size(rpr, 15)
+            set_size(rpr, 17 if ONECOL else 15)
     for kind, el in marks:
         prev = el.getprevious()
         if kind == "FULLWIDTHSTART":
@@ -401,19 +429,20 @@ def reference_docx(path):
         if ind_first is not None:
             ind = etree.SubElement(ppr, q("w:ind")); ind.set(q("w:firstLine"), str(ind_first))
 
-    for sid, run, par in [("Normal", dict(size=20), dict(after=0, jc="both", line=240)),
-                          ("BodyText", dict(size=20), dict(after=0, jc="both", line=240, ind_first=202)),
-                          ("FirstParagraph", dict(size=20), dict(after=0, jc="both", line=240, ind_first=0)),
-                          ("Compact", dict(size=20), dict(after=0, jc="both", line=240, ind_first=0)),
+    B, L = (22, 264) if ONECOL else (20, 240)
+    for sid, run, par in [("Normal", dict(size=B), dict(after=0, jc="both", line=L)),
+                          ("BodyText", dict(size=B), dict(after=0, jc="both", line=L, ind_first=202)),
+                          ("FirstParagraph", dict(size=B), dict(after=0, jc="both", line=L, ind_first=0)),
+                          ("Compact", dict(size=B), dict(after=0, jc="both", line=L, ind_first=0)),
                           ("Title", dict(size=48), dict(before=0, after=120, jc="center")),
                           ("Author", dict(size=22), dict(after=120, jc="center")),
                           ("Abstract", dict(size=18, bold=True), dict(after=120, jc="both")),
-                          ("Heading1", dict(size=20, caps=True), dict(before=200, after=80, jc="center")),
-                          ("Heading2", dict(size=20, italic=True), dict(before=120, after=60)),
-                          ("Heading3", dict(size=20, italic=True), dict(before=60, after=0)),
-                          ("ImageCaption", dict(size=16), dict(after=120, jc="both", ind_first=0)),
-                          ("TableCaption", dict(size=16), dict(before=120, after=60, jc="center", ind_first=0)),
-                          ("Bibliography", dict(size=16), dict(after=0, ind_first=0))]:
+                          ("Heading1", dict(size=B, caps=True), dict(before=200, after=80, jc="center")),
+                          ("Heading2", dict(size=B, italic=True), dict(before=120, after=60)),
+                          ("Heading3", dict(size=B, italic=True), dict(before=60, after=0)),
+                          ("ImageCaption", dict(size=B - 4), dict(after=120, jc="both", ind_first=0)),
+                          ("TableCaption", dict(size=B - 4), dict(before=120, after=60, jc="center", ind_first=0)),
+                          ("Bibliography", dict(size=B - 4), dict(after=0, ind_first=0))]:
         s = style(sid)
         if s is not None:
             set_run(s, **run)
@@ -430,8 +459,7 @@ def reference_docx(path):
 
 def convert(tex_name, out_name, prefix="", title_start=("I. Introduction", "Introduction")):
     src = open(os.path.join(HERE, tex_name), encoding="utf-8").read()
-    if "\\input{supp_tables.tex}" in src:
-        src = src.replace("\\input{supp_tables.tex}", open(os.path.join(HERE, "supp_tables.tex"), encoding="utf-8").read())
+    src = re.sub(r"\\input\{([^}]*)\}", lambda k: open(os.path.join(HERE, k.group(1)), encoding="utf-8").read(), src)
     tex = preprocess(src, prefix)
     pre = os.path.join(HERE, "_word_" + tex_name)
     open(pre, "w", encoding="utf-8").write(tex)
@@ -448,5 +476,5 @@ def convert(tex_name, out_name, prefix="", title_start=("I. Introduction", "Intr
 
 
 if __name__ == "__main__":
-    convert("main.tex", "JBHI_manuscript.docx")
+    convert("main.tex", "JBHI_manuscript.docx", title_start=("I. Introduction",))
     convert("supp.tex", "JBHI_supplementary_material.docx", prefix="S", title_start=("S1.",))

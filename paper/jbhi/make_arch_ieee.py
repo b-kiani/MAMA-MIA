@@ -4,7 +4,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
-BLUE, ORANGE, GREEN, GREY, INK = "#2a78d6", "#eb6834", "#1baf7a", "#6b7280", "#111827"
+BLUE, ORANGE, GREEN, GREY, INK, PURPLE = "#2a78d6", "#eb6834", "#1baf7a", "#6b7280", "#111827", "#7c5cd6"
 plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 11.9})
 fig, ax = plt.subplots(figsize=(11, 5.6), dpi=200)
 ax.set_xlim(0, 110); ax.set_ylim(0, 56); ax.axis("off")
@@ -35,10 +35,13 @@ box(29, 12, 21, 9, "Feature tokens", "one per variable + [CLS];\nlearned if miss
 box(29, 0.8, 21, 7, "Clinical model", "frozen logistic regression", ORANGE)
 # column 3: fusion
 box(57, 44, 21, 8.5, "Shift score", "Mahalanobis distance\nof image embedding", GREY)
-box(57, 22, 21, 12, "Cross-attention", "feature tokens query\nimage tokens", BLUE)
+box(57, 23.5, 21, 10.5, "Cross-attention", "each token queries the\nimage tokens separately", BLUE)
+ax.add_patch(FancyBboxPatch((57, 11.2), 21, 8.3, boxstyle="round,pad=0.25,rounding_size=1.2", lw=1.3, ec=PURPLE, fc=PURPLE + "14", ls="--"))
+ax.text(67.5, 17.0, "Token mixing", ha="center", va="center", weight="bold", color=INK, fontsize=9.7)
+ax.text(67.5, 13.6, "CARF-mix only: self-\nattention over tokens", ha="center", va="center", color="#374151", fontsize=8.6, linespacing=1.2)
 # column 4: heads
 box(84, 44.7, 11, 7, "Gate g", "0 to 1", GREY)
-box(84, 26, 11, 6, "Residual δ", "", BLUE)
+box(84, 23.2, 13, 10.2, "Residual δ", "bounded in\nCARF-mix", BLUE)
 ax.add_patch(plt.Circle((103, 38.5), 2.1, ec=INK, fc="white", lw=1.3))
 ax.text(103, 38.4, "×", ha="center", va="center", fontsize=17.2, color=INK)
 ax.add_patch(FancyBboxPatch((80, 1), 28, 14, boxstyle="round,pad=0.25,rounding_size=1.2", lw=1.3, ec=ORANGE, fc="#fff7ed"))
@@ -54,15 +57,18 @@ ax.text(54.6, 41.2, "image tokens", fontsize=9.8, color=BLUE, va="center", ha="l
 arrow(39.5, 35.6, 39.5, 41.4, BLUE)          # timing added to image tokens
 ax.text(40.3, 38.2, "added", fontsize=9.8, color=BLUE)
 arrow(50.6, 17.5, 56.6, 23.2, GREEN)         # tabular tokens -> attention
-ax.text(54.6, 18.6, "queries", fontsize=9.8, color=GREEN, ha="left")
+ax.text(50.9, 23.4, "queries", fontsize=9.8, color=GREEN, ha="left")
 arrow(78.6, 49, 83.4, 49, GREY)              # shift -> gate
-arrow(78.6, 31.5, 83.6, 44.6, GREY)          # CLS -> gate
-arrow(78.6, 28.5, 83.4, 28.8, BLUE)          # CLS -> residual
-ax.text(79.0, 25.2, "[CLS]", fontsize=9.8, color="#374151")
+arrow(78.6, 32.5, 83.6, 44.6, GREY)          # CLS -> gate
+arrow(78.6, 29.0, 83.4, 29.0, BLUE)          # CLS -> residual
+ax.text(81.0, 30.4, "[CLS]", fontsize=8.6, color="#374151", ha="center")
+arrow(67.5, 23.1, 67.5, 19.9, PURPLE, ls="--")   # cross-attention -> token mixing
+arrow(78.6, 16.0, 84.6, 22.8, PURPLE, ls="--")   # mixed CLS -> residual and gate
+ax.text(82.6, 18.6, "[CLS]", fontsize=8.6, color=PURPLE, ha="left")
 arrow(95.6, 47, 101.6, 40.4, GREY)           # gate -> multiply
-arrow(95.6, 29.6, 101.6, 36.6, BLUE)         # residual -> multiply
+arrow(97.6, 31.6, 101.8, 36.4, BLUE)         # residual -> multiply
 arrow(103, 36.2, 100, 15.8, INK)             # g*delta -> output
-ax.text(103.2, 25.5, "g · δ", fontsize=11.2, color=INK, weight="bold")
+ax.text(103.4, 24.0, "g · δ", fontsize=11.2, color=INK, weight="bold")
 arrow(50.6, 4.3, 79.4, 6.2, ORANGE)          # z_clin -> output
 ax.text(64.5, 7.0, "z_clin  (clinical logit)", fontsize=10.6, color=ORANGE, weight="bold", ha="center")
 fig.savefig("paper/jbhi/figures/fig_architecture.png", bbox_inches="tight", facecolor="white")

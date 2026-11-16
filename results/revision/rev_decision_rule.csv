@@ -1,0 +1,25 @@
+model,margin,diff,ci_lo,ci_hi,statistical,clinical
+"Image only, kinetic 3D ResNet",0.02,-0.18293114945403022,-0.26540180869600083,-0.10046049021205962,inferior,clinically important loss
+"Image only, kinetic 3D ResNet",0.03,-0.18293114945403022,-0.26540180869600083,-0.10046049021205962,inferior,clinically important loss
+"Image only, kinetic 3D ResNet",0.05,-0.18293114945403022,-0.26540180869600083,-0.10046049021205962,inferior,clinically important loss
+"CARF, kinetic",0.02,0.000718929732433149,-0.0007256506442018926,0.0021635101090681907,not shown,equivalent (no clinically important difference)
+"CARF, kinetic",0.03,0.000718929732433149,-0.0007256506442018926,0.0021635101090681907,not shown,equivalent (no clinically important difference)
+"CARF, kinetic",0.05,0.000718929732433149,-0.0007256506442018926,0.0021635101090681907,not shown,equivalent (no clinically important difference)
+"Concatenation fusion, kinetic",0.02,-0.07505001250312582,-0.1356247702530626,-0.014475254753189025,inferior,no clinically important gain (loss not excluded)
+"Concatenation fusion, kinetic",0.03,-0.07505001250312582,-0.1356247702530626,-0.014475254753189025,inferior,no clinically important gain (loss not excluded)
+"Concatenation fusion, kinetic",0.05,-0.07505001250312582,-0.1356247702530626,-0.014475254753189025,inferior,no clinically important gain (loss not excluded)
+"Image only, pretrained 2.5D",0.02,-0.1404830374260232,-0.21693596898805395,-0.06403010586399244,inferior,clinically important loss
+"Image only, pretrained 2.5D",0.03,-0.1404830374260232,-0.21693596898805395,-0.06403010586399244,inferior,clinically important loss
+"Image only, pretrained 2.5D",0.05,-0.1404830374260232,-0.21693596898805395,-0.06403010586399244,inferior,clinically important loss
+"CARF, pretrained 2.5D",0.02,-0.029955405518046208,-0.08192062127755624,0.022009810241463826,not shown,inconclusive
+"CARF, pretrained 2.5D",0.03,-0.029955405518046208,-0.08192062127755624,0.022009810241463826,not shown,no clinically important gain (loss not excluded)
+"CARF, pretrained 2.5D",0.05,-0.029955405518046208,-0.08192062127755624,0.022009810241463826,not shown,no clinically important gain (loss not excluded)
+Clinical + FTV,0.02,0.00046886721680416965,-0.018107226547466278,0.019044960981074617,not shown,equivalent (no clinically important difference)
+Clinical + FTV,0.03,0.00046886721680416965,-0.018107226547466278,0.019044960981074617,not shown,equivalent (no clinically important difference)
+Clinical + FTV,0.05,0.00046886721680416965,-0.018107226547466278,0.019044960981074617,not shown,equivalent (no clinically important difference)
+Kinetic radiomics,0.02,-0.17313703425856464,-0.25533407017438525,-0.090939998342744,inferior,clinically important loss
+Kinetic radiomics,0.03,-0.17313703425856464,-0.25533407017438525,-0.090939998342744,inferior,clinically important loss
+Kinetic radiomics,0.05,-0.17313703425856464,-0.25533407017438525,-0.090939998342744,inferior,clinically important loss
+Clinical + kinetic radiomics,0.02,-0.040270484287738606,-0.0870611650216313,0.006520196446154092,not shown,no clinically important gain (loss not excluded)
+Clinical + kinetic radiomics,0.03,-0.040270484287738606,-0.0870611650216313,0.006520196446154092,not shown,no clinically important gain (loss not excluded)
+Clinical + kinetic radiomics,0.05,-0.040270484287738606,-0.0870611650216313,0.006520196446154092,not shown,no clinically important gain (loss not excluded)

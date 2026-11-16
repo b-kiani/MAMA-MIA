@@ -1,0 +1,6 @@
+collection,receptors_known,n,events
+DUKE,True,280,64
+ISPY1,False,5,2
+ISPY1,True,162,47
+NACT,False,17,1
+NACT,True,47,10
