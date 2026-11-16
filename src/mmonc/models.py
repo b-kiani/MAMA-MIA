@@ -186,6 +186,14 @@ class CARF(nn.Module):
         d2 = ((pooled - self.mu) ** 2 / (self.var + 1e-4)).mean(1, keepdim=True)
         return torch.log1p(d2).detach()
 
+    # Hooks. In CARF both are identities, so the [CLS] output depends only on the image tokens
+    # (each query cross-attends to the image independently); see CARFMix for the corrected design.
+    def mix_tokens(self, h):
+        return h
+
+    def bound_delta(self, raw):
+        return raw
+
     def forward(self, batch, drop_image: bool | None = None):
         B = batch["image"].shape[0]
         img, _ = self.image_tokens(batch["image"], batch["dt"])
@@ -199,8 +207,9 @@ class CARF(nn.Module):
         a, w = self.attn(self.n1(q), img, img, need_weights=True)
         h = q + a
         h = h + self.ffn(self.n2(h))
+        h = self.mix_tokens(h)
         cls = h[:, 0]
-        delta = self.delta_head(cls).squeeze(1)
+        delta = self.bound_delta(self.delta_head(cls).squeeze(1))
         gate = torch.sigmoid(self.gate_head(torch.cat([cls, shift], 1))).squeeze(1)
         if not self.use_gate:  # ablation: plain residual, logit = z_clin + delta
             gate = torch.ones_like(gate)
@@ -289,8 +298,68 @@ class CARF25D(CARF):
         return tok, None
 
 
+class CARFMix(CARF):
+    """Corrected CARF (revision). Two changes to CARF:
+
+    1. token mixing: after the cross-attention block, a pre-norm self-attention layer over the
+       tabular tokens lets [CLS] read the clinical and kinetic tokens, so delta and the gate can
+       depend on the tabular inputs as well as on the image;
+    2. bounded residual: delta = B * tanh(raw / B), so |gate * delta| <= B logits by construction.
+    """
+
+    def __init__(self, n_tab: int, dim: int = 128, heads: int = 4, bound: float = 1.0, **kw):
+        super().__init__(n_tab, dim=dim, heads=heads, **kw)
+        self.mix = nn.TransformerEncoderLayer(dim, heads, 2 * dim, dropout=0.1, batch_first=True, norm_first=True)
+        self.bound = float(bound)
+
+    def mix_tokens(self, h):
+        return self.mix(h)
+
+    def bound_delta(self, raw):
+        return self.bound * torch.tanh(raw / self.bound)
+
+
+class CARFMix25D(CARFMix):
+    """CARFMix with the pretrained 2.5D slice encoder of CARF25D."""
+
+    def __init__(self, n_tab: int, dim: int = 128, pretrained: bool = True, **kw):
+        self._pretrained = pretrained
+        super().__init__(n_tab, dim=dim, **kw)
+
+    _make_encoder = CARF25D._make_encoder
+    image_tokens = CARF25D.image_tokens
+
+
+class WholeBreast3D(nn.Module):
+    """Large-context baseline adapted from Joo et al. (Sci Rep 2021): a 3D ResNet on the
+    whole-breast early subtraction volume; optional late fusion with the clinical variables
+    (image -> 6 units, clinical -> 6 units with dropout 0.1, concatenated -> 1 logit).
+
+    Deviations from the original (stated in the paper): ResNet-18 instead of ResNet-50,
+    1.5-mm instead of 1.2-mm voxels, no T2-weighted input (not in MAMA-MIA), three clinical
+    variables instead of twelve.
+    """
+
+    def __init__(self, n_clin: int = 3, fusion: bool = True):
+        super().__init__()
+        from monai.networks import nets
+
+        self.net = nets.resnet18(spatial_dims=3, n_input_channels=1, num_classes=6, conv1_t_stride=2)
+        self.n_clin, self.fusion = n_clin, fusion
+        if fusion:
+            self.clin = nn.Sequential(nn.Linear(n_clin, 6), nn.Dropout(0.1))
+        self.out = nn.Linear(12 if fusion else 6, 1)
+
+    def forward(self, batch):
+        f = self.net(batch["image"])
+        if self.fusion:
+            f = torch.cat([f, self.clin(batch["tab"][:, :self.n_clin])], 1)
+        return {"logit": self.out(f).squeeze(1)}
+
+
 MONAI_KINDS = ("densenet121", "efficientnet_b0", "vit")
-SLICE_MODELS = ("s25d", "carf_25d")  # these read data.slices(i); every other model reads the 3D volume
+SLICE_MODELS = ("s25d", "carf_25d", "carfm_25d")
+WHOLE_MODELS = ("wb_img", "wb_fusion")  # these read data.slices(i); every other model reads the 3D volume
 
 
 def build(name: str, n_tab: int, widths=(32, 64, 128, 256), dim: int = 128, size: int = 64) -> nn.Module:
@@ -319,4 +388,13 @@ def build(name: str, n_tab: int, widths=(32, 64, 128, 256), dim: int = 128, size
         return Slice25D()
     if name == "carf_25d":
         return CARF25D(n_tab, dim=dim)
+    # revision: corrected CARF and the large-context whole-breast baseline
+    if name == "carfm_k":
+        return CARFMix(n_tab, dim=dim, widths=widths, in_ch=6)
+    if name == "carfm_25d":
+        return CARFMix25D(n_tab, dim=dim)
+    if name == "wb_img":
+        return WholeBreast3D(fusion=False)
+    if name == "wb_fusion":
+        return WholeBreast3D(fusion=True)
     raise ValueError(name)
