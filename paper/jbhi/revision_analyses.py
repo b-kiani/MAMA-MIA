@@ -48,7 +48,7 @@ def load_predictions():
     r1 = os.path.join(REV, "raw", "r1_predictions_external.csv")
     if os.path.exists(r1):
         R = pd.read_csv(r1)
-        keep = [c for c in R.columns if c in ("case_id",) or c.startswith(("CARF", "Image only", "Concatenation", "Radiomics", "Clinical +"))]
+        keep = [c for c in R.columns if c in ("case_id", "Clinical") or c.startswith(("CARF", "Image only", "Concatenation", "Radiomics", "Clinical +"))]
         R = R[keep].rename(columns={c: "R1: " + c for c in keep if c != "case_id"})
         P = P.merge(R, on="case_id", how="left")
     for f in sorted(glob.glob(os.path.join(REV, "raw", "preds_devext_g*.csv")) + glob.glob(os.path.join(REV, "raw", "preds_dino_*.csv"))):
@@ -59,8 +59,12 @@ def load_predictions():
     return P
 
 
+def ref_of(P, m):
+    return "R1: Clinical" if m.startswith("R1:") and "R1: Clinical" in P.columns else "Clinical"
+
+
 def models_of(P):
-    return [c for c in P.columns if c not in META and not c.startswith("gate:") and c != "Clinical"]
+    return [c for c in P.columns if c not in META and not c.startswith("gate:") and c not in ("Clinical", "R1: Clinical")]
 
 
 def stratified_auc(y, p, g):
@@ -85,23 +89,23 @@ def per_collection(P, n_boot=2000):
             continue
         for c in EXTC:
             s = g == c
-            d = stats.delong(y[s], E.Clinical.to_numpy()[s], E[m].to_numpy()[s])
+            d = stats.delong(y[s], E[ref_of(P, m)].to_numpy()[s], E[m].to_numpy()[s])
             rows.append({"model": m, "collection": NAMES[c], "n": int(s.sum()), "events": int(y[s].sum()),
                          "auc_clinical": d["auc1"], "auc_model": d["auc2"], "diff": d["diff"], "ci_lo": d["ci_lo"], "ci_hi": d["ci_hi"], "p": d["p"]})
-        d = stats.delong(y, E.Clinical, E[m])
-        est = stratified_auc(y, E[m].to_numpy(), g) - stratified_auc(y, E.Clinical.to_numpy(), g)
+        d = stats.delong(y, E[ref_of(P, m)], E[m])
+        est = stratified_auc(y, E[m].to_numpy(), g) - stratified_auc(y, E[ref_of(P, m)].to_numpy(), g)
         boots = []
         for _ in range(n_boot):
             b = np.concatenate([rng.choice(idx_by[c], len(idx_by[c])) for c in EXTC])
             try:
-                boots.append(stratified_auc(y[b], E[m].to_numpy()[b], g[b]) - stratified_auc(y[b], E.Clinical.to_numpy()[b], g[b]))
+                boots.append(stratified_auc(y[b], E[m].to_numpy()[b], g[b]) - stratified_auc(y[b], E[ref_of(P, m)].to_numpy()[b], g[b]))
             except ValueError:
                 pass
         lo, hi = np.percentile(boots, [2.5, 97.5])
         rows.append({"model": m, "collection": "Pooled (all pairs)", "n": len(y), "events": int(y.sum()), "auc_clinical": d["auc1"],
                      "auc_model": d["auc2"], "diff": d["diff"], "ci_lo": d["ci_lo"], "ci_hi": d["ci_hi"], "p": d["p"]})
         rows.append({"model": m, "collection": "Within-collection pairs", "n": len(y), "events": int(y.sum()),
-                     "auc_clinical": stratified_auc(y, E.Clinical.to_numpy(), g), "auc_model": stratified_auc(y, E[m].to_numpy(), g),
+                     "auc_clinical": stratified_auc(y, E[ref_of(P, m)].to_numpy(), g), "auc_model": stratified_auc(y, E[m].to_numpy(), g),
                      "diff": est, "ci_lo": lo, "ci_hi": hi, "p": np.nan})
     return pd.DataFrame(rows)
 
@@ -145,7 +149,7 @@ def leave_one_out(P):
             continue
         for c in [None] + EXTC:
             s = E if c is None else E[E.collection != c]
-            d = stats.delong(s.y, s.Clinical, s[m])
+            d = stats.delong(s.y, s[ref_of(P, m)], s[m])
             rows.append({"model": m, "excluded": "none" if c is None else NAMES[c], "n": len(s), "diff": d["diff"], "ci_lo": d["ci_lo"], "ci_hi": d["ci_hi"]})
     return pd.DataFrame(rows)
 
@@ -176,7 +180,7 @@ def decision_curves(P, thresholds=(0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5), n_boot
     for m in ["Clinical"] + models_of(P):
         if E[m].isna().any():
             continue
-        p, pc = E[m].to_numpy(), E.Clinical.to_numpy()
+        p, pc = E[m].to_numpy(), E[ref_of(P, m)].to_numpy()
         nb = metrics.net_benefit(y, p, thresholds)
         nbc = metrics.net_benefit(y, pc, thresholds)
         nball = metrics.net_benefit_all(y, thresholds)
@@ -211,18 +215,21 @@ def decision_rule(per_coll, margins=(0.02, 0.03, 0.05)):
 
 def gdelta(P):
     rows = []
-    for m in [c for c in P.columns if c.startswith("CARF") and not c.startswith("gate:")]:
+    for m in [c for c in P.columns if c.startswith(("CARF", "R1: CARF")) and not c.startswith("gate:")]:
         for st in ("dev", "ext"):
             s = P[(P.set == st) & P[m].notna()]
-            d = logit(s[m]) - logit(s.Clinical)
+            if not len(s):
+                continue
+            d = logit(s[m]) - logit(s[ref_of(P, m)])
             rows.append({"model": m, "set": "I-SPY2 (out-of-fold)" if st == "dev" else "External (5-fold average)", "n": len(s),
                          "mean_abs": float(np.abs(d).mean()), "p99_abs": float(np.percentile(np.abs(d), 99)), "max_abs": float(np.abs(d).max()),
-                         "max_abs_prob_change": float(np.abs(s[m] - s.Clinical).max())})
+                         "max_abs_prob_change": float(np.abs(s[m] - s[ref_of(P, m)]).max())})
     return pd.DataFrame(rows)
 
 
 def main():
     P = load_predictions()
+    P.to_csv(os.path.join(OUT, "rev_all_predictions.csv"), index=False)
     tabs = {"rev_per_collection": per_collection(P), "rev_loco_weights": loco_weights(), "rev_subgroup_counts": subgroup_counts(P),
             "rev_leave_one_out": leave_one_out(P), "rev_calibration": calibration(P), "rev_decision_curves": decision_curves(P),
             "rev_gdelta": gdelta(P)}
