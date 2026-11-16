@@ -55,14 +55,17 @@ def fig_samples(path):
     for k, m in enumerate(meta):
         cases[(m[1], int(m[2]))] = k
     cols = [c for c in ("ISPY2", "DUKE", "ISPY1", "NACT") if (c, 1) in cases and (c, 0) in cases]
-    panels = [("Pre-contrast", lambda x: x[0], "gray", (0, 2)), ("Early post-contrast", lambda x: x[1], "gray", (0, 4)),
-              ("Late post-contrast", lambda x: x[2], "gray", (0, 4)), ("Enhancement (early / pre − 1)", lambda x: x[1] - x[0], "magma", (0, 2.5))]
+    panels = [("Pre-contrast", lambda x: x[0], "gray", None), ("Early post-contrast", lambda x: x[1], "gray", None),
+              ("Late post-contrast", lambda x: x[2], "gray", None), ("Enhancement (early − pre)", lambda x: x[1] - x[0], "magma", None)]
     order = [(c, y) for c in cols for y in (1, 0)]
     fig, axs = plt.subplots(4, len(order), figsize=(7.4, 4.35), gridspec_kw={"wspace": 0.04, "hspace": 0.05})
     for col, (c, y) in enumerate(order):
         k = cases[(c, y)]
         x, m = img[k], msk[k] > 0
-        for row, (title, f, cmap, (lo, hi)) in enumerate(panels):
+        win = (0.0, float(np.percentile(x[:3], 99.5)))           # one window for the three phases of a case
+        ew = (0.0, float(np.percentile(x[1] - x[0], 99.5)))      # enhancement window of that case
+        for row, (title, f, cmap, _) in enumerate(panels):
+            lo, hi = ew if row == 3 else win
             ax = axs[row, col]
             ax.imshow(f(x), cmap=cmap, vmin=lo, vmax=hi, interpolation="bilinear")
             ax.contour(m, levels=[0.5], colors=["#22d3ee"], linewidths=0.6)
@@ -78,7 +81,7 @@ def fig_samples(path):
         fig.text((a.x0 + b.x1) / 2, a.y1 + 0.105, COLL[c], ha="center", fontsize=8, weight="bold", color=INK)
         fig.add_artist(plt.Line2D([a.x0 + 0.004, b.x1 - 0.004], [a.y1 + 0.098] * 2, color=INK2, lw=0.6))
     fig.text(0.5, 0.06, "Cyan outline: expert tumour segmentation. One slice through the tumour in the acquisition plane per case, chosen as the pCR and the non-pCR "
-             "case of median tumour volume in each collection.\nSignal is relative to the mean pre-contrast signal of the crop. "
+             "case of median tumour volume in each collection.\nGrey scale: one window per case, shared by the three phases (0 to the 99.5th percentile). "
              "Data: MAMA-MIA (Synapse syn60868042), CC BY-NC 4.0.", ha="center", va="top", fontsize=6.2, color=INK2)
     save(fig, "fig_samples")
 
