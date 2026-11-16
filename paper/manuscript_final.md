@@ -9,7 +9,7 @@
 1. Department of Computer Science, School of Engineering, Central Asian University, Tashkent, Uzbekistan
 2. Faculty of Data Science and Information Technology, INTI International University, Negeri Sembilan, Malaysia
 
-**Corresponding author:** Behnam Kiani Kalejahi, Department of Computer Science, School of Engineering, Central Asian University, Tashkent, Uzbekistan. [[Email and ORCID]]
+**Corresponding author:** Behnam Kiani Kalejahi, Department of Computer Science, School of Engineering, Central Asian University, Tashkent, Uzbekistan. E-mail: b.kiani@centralasian.uz; ORCID: https://orcid.org/0000-0002-7118-0382
 
 **Funding:** The authors received no funding for this work.
 
@@ -59,7 +59,7 @@ We also tested clinically anchored residual fusion (CARF), in which imaging can 
 ## Materials and Methods
 
 ### Study Design
-This retrospective study developed and externally validated prediction models on public, de-identified data and is reported according to TRIPOD+AI (7) and CLAIM (8). The analysis plan and code were committed to a public repository before external data were scored (round 1). Round-2 analyses were planned after round-1 results were known, and that plan was committed before any round-2 model was trained. Round 2 is secondary. [[Ethics statement]]
+This retrospective study developed and externally validated prediction models on public, de-identified data and is reported according to TRIPOD+AI (7) and CLAIM (8). The analysis plan and code were committed to a public repository before external data were scored (round 1). Round-2 analyses were planned after round-1 results were known, and that plan was committed before any round-2 model was trained. Round 2 is secondary. The study used only public, de-identified data and required no institutional review board approval.
 
 ### Patients and Data
 We used MAMA-MIA (4), distributed through Synapse (syn60868042). It harmonizes pretreatment T1-weighted DCE MRI, expert tumor segmentations and clinical data from four collections of The Cancer Imaging Archive (9):
@@ -294,7 +294,7 @@ Architecture diagram (figures/fig_architecture.png), training algorithm, evaluat
 MAMA-MIA is available from Synapse (syn60868042) under CC BY-NC 4.0. Code, configurations, Kaggle notebooks, per-patient predictions and all result tables are at https://github.com/b-kiani/MAMA-MIA.
 
 ## Declarations
-**Use of AI tools:** [[Required disclosure. Suggested: "Claude (Anthropic) was used to write analysis code and to draft the manuscript. The authors verified all code, results and text and take full responsibility for the content."]]
+**Use of AI tools:** During this work, the authors used Claude (Anthropic), a generative artificial intelligence system, to write and debug the analysis code, to generate the figures, and to draft and edit the text of all sections of this manuscript. The authors designed the study, reviewed and verified all code, results and text, and take full responsibility for the content of this article.
 
 **Conflicts of interest:** [[Per author, from the ICMJE form.]]
 
@@ -310,7 +310,7 @@ MAMA-MIA is available from Synapse (syn60868042) under CC BY-NC 4.0. Code, confi
 9. Clark K, Vendt B, Smith K, et al. The Cancer Imaging Archive (TCIA): maintaining and operating a public information repository. J Digit Imaging 2013;26(6):1045–1057.
 10. Hylton NM, Blume JD, Bernreuter WK, et al. Locally advanced breast cancer: MR imaging for prediction of response to neoadjuvant chemotherapy—results from ACRIN 6657/I-SPY TRIAL. Radiology 2012;263(3):663–672.
 11. Saha A, Harowicz MR, Grimm LJ, et al. A machine learning approach to radiogenomics of breast cancer: a study of 922 subjects and 529 DCE-MRI features. Br J Cancer 2018;119(4):508–516.
-12. Newitt D, Hylton N. Single site breast DCE-MRI data and segmentations from patients undergoing neoadjuvant chemotherapy [dataset]. The Cancer Imaging Archive; 2016. [[Confirm DOI on the TCIA collection page.]]
+12. Newitt D, Hylton N. Single site breast DCE-MRI data and segmentations from patients undergoing neoadjuvant chemotherapy [dataset]. The Cancer Imaging Archive; 2016. doi:10.7937/K9/TCIA.2016.QHsyhJKy
 13. Cardoso MJ, Li W, Brown R, et al. MONAI: an open-source framework for deep learning in healthcare. arXiv 2211.02701 [preprint]. 2022.
 14. Vickers AJ, Elkin EB. Decision curve analysis: a novel method for evaluating prediction models. Med Decis Making 2006;26(6):565–574.
 15. DeLong ER, DeLong DM, Clarke-Pearson DL. Comparing the areas under two or more correlated receiver operating characteristic curves: a nonparametric approach. Biometrics 1988;44(3):837–845.

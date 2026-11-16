@@ -16,3 +16,5 @@ paper/jbhi/supp_tables.tex
 paper/jbhi/*.pdf
 paper/jbhi/*.log
 paper/jbhi/submission/
+paper/jbhi/*.aux
+paper/jbhi/*.out
