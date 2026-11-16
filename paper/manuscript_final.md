@@ -18,7 +18,7 @@
 **Key Points**
 1. In 511 patients from three held-out collections, a model of age, hormone receptor and HER2 status had an AUC of 0.70; fusing DCE MRI with it changed the AUC by 0.004 (95% CI: −0.002, 0.009), inside a prespecified ±0.03 equivalence margin.
 2. None of 16 imaging-based models exceeded the clinical model. Image-only networks, including a pretrained 2.5D network and three-phase kinetic inputs, had external AUCs of 0.51–0.56. Functional tumor volume added 0.000 (95% CI: −0.018, 0.019).
-3. Radiomics and naive fusion gained AUC in internal cross-validation (up to 0.065) but lost it externally. On the same tumor crops, the networks predicted hormone receptor status with an AUC of only 0.57.
+3. Radiomics and naive fusion gained AUC in internal cross-validation (up to 0.065) but lost it externally. On the same tumor crops, the networks predicted hormone receptor status with an external AUC of only 0.57.
 
 **Abbreviations:**
 - AUC = area under the receiver operating characteristic curve
@@ -38,7 +38,7 @@
 
 **Materials and Methods:** This retrospective study used the public MAMA-MIA dataset: 1,491 women (mean age, 48.5 years ± 10.4) imaged from 1995 to 2016. Models were developed on I-SPY2 (980 patients, 22 sites) and scored once on Duke, I-SPY1 and NACT (511 patients). Sixteen imaging-based models were compared with a clinical model by paired DeLong tests. They comprised 3D and pretrained 2.5D networks, radiomics including functional tumor volume (FTV), and two fusion designs. The prespecified primary end point was the external AUC difference between clinically anchored residual fusion (CARF) and the clinical model, with a ±0.03 equivalence margin. Secondary analyses comprised leave-one-collection-out validation and control tasks.
 
-**Results:** The clinical model had an external AUC of 0.70 (95% CI: 0.65, 0.75). CARF differed by 0.004 (95% CI: −0.002, 0.009), within the margin. No imaging-based model exceeded the clinical model, and image-only networks reached 0.51–0.56. Clinical plus kinetic radiomics had an AUC of 0.72 internally but 0.66 externally. Adding FTV changed the AUC by 0.000 (95% CI: −0.018, 0.019). Across leave-one-collection-out splits, clinical plus kinetic radiomics gained 0.003 (95% CI: −0.006, 0.012). The same networks predicted HR status with an AUC of 0.57.
+**Results:** The clinical model had an external AUC of 0.70 (95% CI: 0.65, 0.75). CARF differed by 0.004 (95% CI: −0.002, 0.009), within the margin. No imaging-based model exceeded the clinical model, and image-only networks reached 0.51–0.56. Clinical plus kinetic radiomics had an AUC of 0.72 internally but 0.66 externally. Adding FTV changed the AUC by 0.000 (95% CI: −0.018, 0.019). Across leave-one-collection-out splits, clinical plus kinetic radiomics gained 0.003 (95% CI: −0.006, 0.012). The same networks predicted HR status with an external AUC of 0.57.
 
 **Conclusion:** Pretreatment DCE MRI models added no clinically meaningful discrimination to receptor status in external cohorts.
 
@@ -154,7 +154,7 @@ In LOCO validation, the clinical model's AUC was 0.67 (I-SPY2 held out), 0.66 (D
 Training on more sources therefore did not reveal added value.
 
 ### What the Networks Learned
-On the same crops, the kinetic 3D network predicted HR status with an AUC of 0.57 (95% CI: 0.53, 0.60) internally and 0.57 externally (Fig 6). Its other control-task AUCs were:
+On the same crops, the kinetic 3D network predicted HR status with an AUC of 0.56 (95% CI: 0.53, 0.60) internally and 0.57 externally (Fig 6). Its other control-task AUCs were:
 
 | Target | Internal AUC (95% CI) | External AUC (95% CI) |
 | --- | --- | --- |
@@ -166,7 +166,7 @@ The external field-strength signal reflects differences between collections, bec
 
 No image score added information to the clinical logit externally (likelihood-ratio P ≥ .24). The optimistic stacking bound was 0.007 (95% CI: −0.013, 0.026). Within receptor subtypes, discrimination was weak for all models (clinical AUC, 0.55–0.63), and no image score added information (Holm-adjusted P ≥ .44).
 
-Predictions were driven by HR status (mean absolute Shapley value, 0.55) and HER2 status (0.42). CARF's imaging contribution was small (mean absolute logit shift, 0.015–0.038), so Grad-CAM maps were uninformative.
+Predictions were driven by HR status (mean absolute Shapley value, 0.55) and HER2 status (0.42). CARF's imaging contribution was small (mean absolute logit shift, 0.014–0.038), so Grad-CAM maps were uninformative.
 
 ## Discussion
 
@@ -181,7 +181,7 @@ Three findings matter beyond this dataset.
 
 First, internal gains did not transfer. Radiomics and naive fusion improved cross-validated AUC by up to 0.065 and then lost to the clinical model externally. Single-center or random-split studies cannot detect this pattern, and it plausibly explains much of the gap between published AUCs and external results.
 
-Second, the control tasks bound what these networks can learn. Trained on about 1,000 tumor crops, they predicted HR status with an AUC of only 0.57, although HR status is associated with enhancement patterns. A null pCR result therefore reflects how little a network can extract at this data scale, not proof that the images contain no signal. Any future claim should show that its model clears such a control first.
+Second, the control tasks bound what these networks can learn. Trained on about 1,000 tumor crops, they predicted HR status with an AUC of only 0.56 internally and 0.57 externally, although HR status is associated with enhancement patterns. A null pCR result therefore reflects how little a network can extract at this data scale, not proof that the images contain no signal. Any future claim should show that its model clears such a control first.
 
 Third, anchoring limits harm but is not a guarantee. CARF with 3D encoders was never worse than the clinical model, because its gate stayed nearly closed. With a stronger pretrained encoder the gate opened, and external discrimination and calibration fell, while the shift score failed to flag the external scans. Anchoring makes the imaging contribution explicit and bounded per patient, but robust shift detection remains unsolved.
 

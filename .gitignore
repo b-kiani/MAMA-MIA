@@ -8,3 +8,11 @@ data/raw/
 data/prepared/
 results/*/checkpoints/
 results/round2/raw/
+
+# JBHI manuscript kept out of the public repo until the authors decide (JBHI: no prior online publication)
+paper/jbhi/main.tex
+paper/jbhi/supp.tex
+paper/jbhi/supp_tables.tex
+paper/jbhi/*.pdf
+paper/jbhi/*.log
+paper/jbhi/submission/
