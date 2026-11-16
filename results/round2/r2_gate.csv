@@ -1,0 +1,6 @@
+set,collection,"gate:CARF, kinetic","gate:CARF, kinetic","gate:CARF, pretrained 2.5D","gate:CARF, pretrained 2.5D"
+,,mean,std,mean,std
+dev,ISPY2,0.1676,0.0857,0.7084,0.1336
+ext,DUKE,0.1674,0.0048,0.7288,0.0592
+ext,ISPY1,0.1694,0.0111,0.715,0.0577
+ext,NACT,0.1657,0.0044,0.7115,0.0581

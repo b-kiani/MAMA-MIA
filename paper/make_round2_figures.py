@@ -203,7 +203,7 @@ def fig_loco(loco, pooled):
     ax.set_xticklabels([f"{COLL[h]} held out\nn = {int(n.loc[h, 'n'])}\nclinical AUC {n.loc[h, 'auc']:.2f}" if h in n.index else COLL[h] for h in hs]
                        + ["Pooled\n(inverse\nvariance)"], fontsize=7)
     ax.set_ylabel("AUC difference vs clinical model\n(held-out collection, 95% CI)")
-    ax.legend(fontsize=7, loc="lower left", ncol=2)
+    ax.legend(fontsize=7, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=3)
     ax.grid(axis="y", color=GRID, lw=0.6)
     save(fig, "fig_loco")
 
