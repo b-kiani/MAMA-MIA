@@ -155,7 +155,7 @@ Kinetic 3D ResNet, image only & 2 & 0.57 (0.53--0.61) & 0.52 (0.46--0.58) & $-$0
             "\\setlength{\\tabcolsep}{4pt}\n\\begin{tabular}{llcccc}\n\\toprule\n"
             "Model & Stage & Internal AUC (95\\% CI) & External AUC (95\\% CI) & External $\\Delta$ vs clinical (95\\% CI) & Holm $P$\\\\\n\\midrule\n"
             + body + "\n\\bottomrule\n"
-            "\\multicolumn{6}{p{0.94\\linewidth}}{\\scriptsize Stage 1: round~1 (CARF vs clinical is the confirmatory comparison; the others are secondary). Stage 2: round~2 (exploratory, adaptive). Stage R: revision (exploratory, post hoc). Internal: I-SPY2 fivefold cross-validation ($n=980$). External: Duke, I-SPY1 and NACT ($n=511$; 124 with pCR). $\\Delta$: paired DeLong difference. Holm correction within each stage; the stage-1 family also included the CARF seeds and ablations. Exploratory $P$ values are descriptive.}\\\\\n"
+            "\\multicolumn{6}{p{0.94\\linewidth}}{\\scriptsize Stage 1: round~1 (CARF vs clinical is the confirmatory comparison; the others are secondary). Stage 2: round~2 (exploratory, adaptive). Stage R: revision (exploratory, post hoc). Internal: I-SPY2 fivefold cross-validation ($n=980$). External: Duke, I-SPY1 and NACT ($n=511$; 124 with pCR). $\\Delta$: paired DeLong difference. Confidence intervals are unadjusted; only the $P$ values are Holm-adjusted, within each stage (the stage-1 family also included the CARF seeds and ablations), so an interval excluding 0 can accompany an adjusted $P$ above .05. The unadjusted $P$ for the confirmatory comparison is .15. Exploratory $P$ values are descriptive.}\\\\\n"
             "\\end{tabular}\n\\end{table}\n")
 
 
@@ -358,6 +358,26 @@ def supp_tables():
         parts.append(table("Learning Curves for pCR: AUC by Share of Each Training Fold Used", "tab:s_lc",
                            ["Network", "Share, \\%", "Training $n$", "Training AUC (range)", "Held-out AUC (95\\% CI)", "External AUC (95\\% CI)"], rows, "lccccc",
                            "Training AUC: mean and range over the five folds, computed on the patients used for fitting, at the weights kept by early stopping. The 100\\% rows are the round-2 models; their training AUC was not recorded."))
+    # second review: nesting audit and clinical specifications
+    f = os.path.join(REV, "rev_audit_nesting.csv")
+    if os.path.exists(f):
+        A = pd.read_csv(f)
+        rows = [[str(int(r.fold)), str(int(r.n_train)), f3(r.mean_abs_diff), f3(r.p99_abs_diff), f2(r.max_abs_diff), f3(r.corr), f2(r.sd_anchor)] for r in A.itertuples()]
+        parts.append(table("Anchors as Used Versus Fully Nested Anchors for the Network-Training Patients of Each Outer Fold (Logits)", "tab:s_nest",
+                           ["Outer fold", "Training patients", "Mean $|$difference$|$", "99th percentile", "Maximum", "Correlation", "SD of anchor"], rows, "ccccccc",
+                           "As used: anchors cross-fitted once over all of I-SPY2 with the outer folds. Nested: cross-fitted within the network-training patients of the outer fold (excluding the test fold and the early-stopping patients). The largest differences occur in the three I-SPY2 patients with missing age, whose missing-value indicator is estimated from very few patients."))
+    f = os.path.join(REV, "rev_clinical_candidates.csv")
+    if os.path.exists(f):
+        Cc = pd.read_csv(f)
+        rows = [[r.description.replace(" x ", " $\\times$ "), str(int(r.n_terms)), f"{r.cv_auc_mean:.3f} ({r.cv_auc_sd_over_repeats:.3f})", f3(r.ext_auc),
+                 ci(r.diff_vs_main, r.ci_lo, r.ci_hi), f"{r.e_over_o:.2f}; {f2(r.intercept)}; {f2(r.slope)}", "yes" if r.selected else ""] for r in Cc.itertuples()]
+        parts.append(table("Clinical Specifications Compared on I-SPY2 Data (Post Hoc)", "tab:s_clin",
+                           ["Specification", "Terms", "I-SPY2 CV AUC (SD)", "External AUC", "$\\Delta$ vs main (95\\% CI)", "E/O; intercept; slope", "Selected"], rows, "lcccccc",
+                           "CV AUC: mean over 20 repeats of fivefold cross-validation; SD over repeats. Spline: natural cubic spline of age with knots at the 10th, 50th and 90th I-SPY2 percentiles. Selection was by CV AUC only.", size="\\scriptsize"))
+    for fn, cap, lab in (("rev_opt_summary.tex", None, None), ("rev_nested_summary.tex", None, None)):
+        f = os.path.join(HERE, fn)
+        if os.path.exists(f):
+            parts.append(open(f).read())
     return "\n".join(parts)
 
 
