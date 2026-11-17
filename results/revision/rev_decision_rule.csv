@@ -23,3 +23,45 @@ Kinetic radiomics,0.05,-0.17313703425856464,-0.25533407017438525,-0.090939998342
 Clinical + kinetic radiomics,0.02,-0.040270484287738606,-0.0870611650216313,0.006520196446154092,not shown,no clinically important gain (loss not excluded)
 Clinical + kinetic radiomics,0.03,-0.040270484287738606,-0.0870611650216313,0.006520196446154092,not shown,no clinically important gain (loss not excluded)
 Clinical + kinetic radiomics,0.05,-0.040270484287738606,-0.0870611650216313,0.006520196446154092,not shown,no clinically important gain (loss not excluded)
+R1: Radiomics,0.02,-0.18714053513378348,-0.27283403023313835,-0.10144704003442861,inferior,clinically important loss
+R1: Radiomics,0.03,-0.18714053513378348,-0.27283403023313835,-0.10144704003442861,inferior,clinically important loss
+R1: Radiomics,0.05,-0.18714053513378348,-0.27283403023313835,-0.10144704003442861,inferior,clinically important loss
+R1: Clinical + radiomics,0.02,-0.04149995832291409,-0.08868086168677185,0.005680945040943672,not shown,no clinically important gain (loss not excluded)
+R1: Clinical + radiomics,0.03,-0.04149995832291409,-0.08868086168677185,0.005680945040943672,not shown,no clinically important gain (loss not excluded)
+R1: Clinical + radiomics,0.05,-0.04149995832291409,-0.08868086168677185,0.005680945040943672,not shown,no clinically important gain (loss not excluded)
+R1: Image only (ResNet),0.02,-0.17792989914145207,-0.2620383995816304,-0.09382139870127376,inferior,clinically important loss
+R1: Image only (ResNet),0.03,-0.17792989914145207,-0.2620383995816304,-0.09382139870127376,inferior,clinically important loss
+R1: Image only (ResNet),0.05,-0.17792989914145207,-0.2620383995816304,-0.09382139870127376,inferior,clinically important loss
+R1: Image only (DenseNet-121),0.02,-0.17267858631324495,-0.25498129801991265,-0.09037587460657724,inferior,clinically important loss
+R1: Image only (DenseNet-121),0.03,-0.17267858631324495,-0.25498129801991265,-0.09037587460657724,inferior,clinically important loss
+R1: Image only (DenseNet-121),0.05,-0.17267858631324495,-0.25498129801991265,-0.09037587460657724,inferior,clinically important loss
+R1: Image only (EfficientNet-B0),0.02,-0.14119154788697175,-0.21946487597777725,-0.06291821979616626,inferior,clinically important loss
+R1: Image only (EfficientNet-B0),0.03,-0.14119154788697175,-0.21946487597777725,-0.06291821979616626,inferior,clinically important loss
+R1: Image only (EfficientNet-B0),0.05,-0.14119154788697175,-0.21946487597777725,-0.06291821979616626,inferior,clinically important loss
+R1: Image only (ViT),0.02,-0.18905768108693854,-0.2714549036509819,-0.10666045852289516,inferior,clinically important loss
+R1: Image only (ViT),0.03,-0.18905768108693854,-0.2714549036509819,-0.10666045852289516,inferior,clinically important loss
+R1: Image only (ViT),0.05,-0.18905768108693854,-0.2714549036509819,-0.10666045852289516,inferior,clinically important loss
+R1: Concatenation fusion,0.02,-0.06204676169042267,-0.11757451060747187,-0.006519012773373474,inferior,no clinically important gain (loss not excluded)
+R1: Concatenation fusion,0.03,-0.06204676169042267,-0.11757451060747187,-0.006519012773373474,inferior,no clinically important gain (loss not excluded)
+R1: Concatenation fusion,0.05,-0.06204676169042267,-0.11757451060747187,-0.006519012773373474,inferior,no clinically important gain (loss not excluded)
+R1: CARF (proposed),0.02,0.003886388263732554,-0.0014668108188429273,0.009239587346308035,not shown,equivalent (no clinically important difference)
+R1: CARF (proposed),0.03,0.003886388263732554,-0.0014668108188429273,0.009239587346308035,not shown,equivalent (no clinically important difference)
+R1: CARF (proposed),0.05,0.003886388263732554,-0.0014668108188429273,0.009239587346308035,not shown,equivalent (no clinically important difference)
+"CARF-mix, kinetic",0.02,-0.004261482037175912,-0.03367923621518744,0.02515627214083561,not shown,inconclusive
+"CARF-mix, kinetic",0.03,-0.004261482037175912,-0.03367923621518744,0.02515627214083561,not shown,no clinically important gain (loss not excluded)
+"CARF-mix, kinetic",0.05,-0.004261482037175912,-0.03367923621518744,0.02515627214083561,not shown,equivalent (no clinically important difference)
+Whole-breast 3D ResNet + clinical,0.02,-0.14110819371509553,-0.2133640280778214,-0.06885235935236968,inferior,clinically important loss
+Whole-breast 3D ResNet + clinical,0.03,-0.14110819371509553,-0.2133640280778214,-0.06885235935236968,inferior,clinically important loss
+Whole-breast 3D ResNet + clinical,0.05,-0.14110819371509553,-0.2133640280778214,-0.06885235935236968,inferior,clinically important loss
+"Whole-breast 3D ResNet, image only",0.02,-0.21635617237642746,-0.2966818448057577,-0.1360304999470972,inferior,clinically important loss
+"Whole-breast 3D ResNet, image only",0.03,-0.21635617237642746,-0.2966818448057577,-0.1360304999470972,inferior,clinically important loss
+"Whole-breast 3D ResNet, image only",0.05,-0.21635617237642746,-0.2966818448057577,-0.1360304999470972,inferior,clinically important loss
+"CARF-mix, pretrained 2.5D",0.02,-0.000823122447278557,-0.03457823166747169,0.032931986772914576,not shown,inconclusive
+"CARF-mix, pretrained 2.5D",0.03,-0.000823122447278557,-0.03457823166747169,0.032931986772914576,not shown,inconclusive
+"CARF-mix, pretrained 2.5D",0.05,-0.000823122447278557,-0.03457823166747169,0.032931986772914576,not shown,equivalent (no clinically important difference)
+"DINOv2 linear probe, image only",0.02,-0.13935775610569312,-0.2200327652540985,-0.05868274695728773,inferior,clinically important loss
+"DINOv2 linear probe, image only",0.03,-0.13935775610569312,-0.2200327652540985,-0.05868274695728773,inferior,clinically important loss
+"DINOv2 linear probe, image only",0.05,-0.13935775610569312,-0.2200327652540985,-0.05868274695728773,inferior,clinically important loss
+DINOv2 linear probe + clinical,0.02,-0.10893348337084263,-0.18402479216910675,-0.033842174572578515,inferior,clinically important loss
+DINOv2 linear probe + clinical,0.03,-0.10893348337084263,-0.18402479216910675,-0.033842174572578515,inferior,clinically important loss
+DINOv2 linear probe + clinical,0.05,-0.10893348337084263,-0.18402479216910675,-0.033842174572578515,inferior,no clinically important gain (loss not excluded)

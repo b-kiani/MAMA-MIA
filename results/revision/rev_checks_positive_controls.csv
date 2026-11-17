@@ -1,0 +1,29 @@
+model,target,cohort,n,positives,auc,lo,hi
+"Image only, pretrained 2.5D",pe_mean_high,I-SPY2 cross-validation,980,490,0.9521574344023325,0.9399863598500625,0.963344648063307
+"Image only, pretrained 2.5D",pe_mean_high,External,526,410,0.9274810765349032,0.9012368587047941,0.9510959840201849
+"Image only, pretrained 2.5D",pe_mean_high,DUKE,291,221,0.9376858435681965,,
+"Image only, pretrained 2.5D",pe_mean_high,ISPY1,171,149,0.9411226357535082,,
+"Image only, pretrained 2.5D",pe_mean_high,NACT,64,40,0.9104166666666667,,
+"Image only, pretrained 2.5D",frac_washout_high,I-SPY2 cross-validation,970,485,0.9230396428951004,0.9042234031246679,0.9399420767350409
+"Image only, pretrained 2.5D",frac_washout_high,External,526,439,0.960071217238761,0.9395432409080199,0.9757043175450998
+"Image only, pretrained 2.5D",frac_washout_high,DUKE,291,231,0.9458874458874459,,
+"Image only, pretrained 2.5D",frac_washout_high,ISPY1,171,151,0.9804635761589404,,
+"Image only, pretrained 2.5D",frac_washout_high,NACT,64,57,0.9724310776942355,,
+"Image only, pretrained 2.5D",vendor_ge,I-SPY2 cross-validation,980,611,0.9923755538701051,0.986946407107279,0.9962529772597234
+"Image only, pretrained 2.5D",vendor_ge,External,526,355,0.8362078906185653,0.7946540647393131,0.8746071163825054
+"Image only, pretrained 2.5D",vendor_ge,DUKE,291,176,0.9476778656126482,,
+"Image only, pretrained 2.5D",vendor_ge,ISPY1,171,115,0.6933229813664596,,
+"Image only, kinetic 3D ResNet",pe_mean_high,I-SPY2 cross-validation,980,490,0.9860391503540191,0.9806080799666805,0.9906545189504372
+"Image only, kinetic 3D ResNet",pe_mean_high,External,526,410,0.9928090832632464,0.987257148864592,0.9970148233809923
+"Image only, kinetic 3D ResNet",pe_mean_high,DUKE,291,221,0.9936005171299288,,
+"Image only, kinetic 3D ResNet",pe_mean_high,ISPY1,171,149,0.9908480780964002,,
+"Image only, kinetic 3D ResNet",pe_mean_high,NACT,64,40,0.9875,,
+"Image only, kinetic 3D ResNet",frac_washout_high,I-SPY2 cross-validation,970,485,0.9656924221490063,0.954821660112658,0.9757693697523647
+"Image only, kinetic 3D ResNet",frac_washout_high,External,526,439,0.9792893985808918,0.9686061581965282,0.9881391878092843
+"Image only, kinetic 3D ResNet",frac_washout_high,DUKE,291,231,0.9691197691197692,,
+"Image only, kinetic 3D ResNet",frac_washout_high,ISPY1,171,151,0.9933774834437086,,
+"Image only, kinetic 3D ResNet",frac_washout_high,NACT,64,57,0.9824561403508771,,
+"Image only, kinetic 3D ResNet",vendor_ge,I-SPY2 cross-validation,980,611,0.9115715052404206,0.8909759645877966,0.9300006874864167
+"Image only, kinetic 3D ResNet",vendor_ge,External,526,355,0.7967383246849518,0.7551873815995388,0.8339053619965408
+"Image only, kinetic 3D ResNet",vendor_ge,DUKE,291,176,0.7780138339920948,,
+"Image only, kinetic 3D ResNet",vendor_ge,ISPY1,171,115,0.7709627329192547,,

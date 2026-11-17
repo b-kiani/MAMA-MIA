@@ -50,15 +50,21 @@ def ci(a, lo, hi, f=f3, dash=False):
     return f"{f(a)} ({f(lo)} to {f(hi)})"
 
 
+def cic(a, lo, hi):
+    return "--" if pd.isna(a) else f"{f3(a)} ({f3(lo)}, {f3(hi)})"
+
+
 def pval(p):
     if pd.isna(p):
         return "--"
+    if p > 0.99:
+        return "$>$.99"
     return "$<$.001" if p < 0.001 else (f"{p:.3f}"[1:] if p < 0.01 else f"{p:.2f}"[1:])
 
 
 def table(caption, label, cols, rows, spec, note=None, size="\\footnotesize", width="0.94\\linewidth"):
     out = [f"\\begin{{table}}[{PLACE}]", f"\\caption{{{caption}}}", f"\\label{{{label}}}", "\\centering", size,
-           "\\setlength{\\tabcolsep}{3pt}", f"\\begin{{tabular}}{{{spec}}}", "\\toprule", " & ".join(cols) + "\\\\", "\\midrule"]
+           "\\setlength{\\tabcolsep}{" + ("2pt" if size == "\\scriptsize" else "3pt") + "}", f"\\begin{{tabular}}{{{spec}}}", "\\toprule", " & ".join(cols) + "\\\\", "\\midrule"]
     for r in rows:
         out.append("\\midrule" if r == "MID" else " & ".join(r) + "\\\\")
     out.append("\\bottomrule")
@@ -98,13 +104,19 @@ SHORT = {"CARF-mix, kinetic": "CARF-mix, kinetic 3D", "DINOv2 linear probe, imag
 
 
 def sh(m):
-    return SHORT.get(m, m)
+    if m in SHORT:
+        return SHORT[m]
+    if m.startswith("R1: "):
+        m = m[4:].replace("Image only (ResNet)", "ResNet, image only").replace("Image only (DenseNet-121)", "DenseNet-121, image only")
+        m = m.replace("Image only (EfficientNet-B0)", "EfficientNet-B0, image only").replace("Image only (ViT)", "Vision transformer, image only")
+        return m + " (round 1)"
+    return m
 
 
 # --------------------------------------------------------------------------------------------- Table: all models
 def tab_all():
     static = r"""Clinical (age, HR, HER2) & 1 & 0.66 (0.62--0.69) & 0.70 (0.65--0.75) & reference & --\\
-\textbf{CARF, 3D (primary)} & 1 & 0.65 (0.62--0.69) & \textbf{0.70 (0.65--0.76)} & \textbf{0.004 ($-$0.002 to 0.009)} & .77\\
+\textbf{CARF, 3D (primary)} & 1 & 0.65 (0.62--0.69) & \textbf{0.70 (0.65--0.76)} & \textbf{0.004 ($-$0.001 to 0.009)} & .77\\
 Clinical + radiomics & 1 & 0.71 (0.68--0.75) & 0.66 (0.61--0.71) & $-$0.042 ($-$0.089 to 0.006) & .51\\
 Concatenation fusion & 1 & 0.69 (0.65--0.72) & 0.64 (0.58--0.70) & $-$0.062 ($-$0.118 to $-$0.006) & .23\\
 Radiomics & 1 & 0.63 (0.59--0.66) & 0.51 (0.45--0.57) & $-$0.187 ($-$0.273 to $-$0.101) & $<$.001\\
@@ -244,7 +256,7 @@ def supp_tables():
         rows.append([sh(m), ci(r["diff"], r.ci_lo, r.ci_hi), r.statistical] + [lab.get(s.loc[k, "clinical"], s.loc[k, "clinical"]) for k in (0.02, 0.03, 0.05)])
     parts.append(table("Decision Rule with Separate Statistical and Clinical-Importance Questions, at Three Margins (Pooled External Cohort)", "tab:s_rule",
                        ["Model", "$\\Delta$ (95\\% CI)", "Statistical", "$m=0.02$", "$m=0.03$", "$m=0.05$"], rows, "lccccc",
-                       "Statistical: superior or inferior if the 95\\% CI excludes 0; otherwise not shown. Clinical importance: equivalent, CI within $(-m,m)$; gain excluded, upper bound below $m$ (a loss is not excluded); important loss, upper bound at most $-m$. For round-1 CARF ($\\Delta$ 0.004; $-0.002$ to 0.009): not shown; equivalent at all three margins."))
+                       "Statistical: superior or inferior if the 95\\% CI excludes 0; otherwise not shown. Clinical importance: equivalent, CI within $(-m,m)$; gain excluded, upper bound below $m$ (a loss is not excluded); important loss, upper bound at most $-m$."))
     # LOCO weights
     W = pd.read_csv(os.path.join(REV, "rev_loco_weights.csv"))
     rows = []
@@ -278,7 +290,7 @@ def supp_tables():
         s = DC[DC.model == m].set_index("threshold")
         key = "nb_vs_best_default" if m == "Clinical" else "nb_minus_clinical"
         lo, hi = ("nbd_lo", "nbd_hi") if m == "Clinical" else ("lo", "hi")
-        rows.append([("Clinical, vs better default" if m == "Clinical" else sh(m))] + [ci(s.loc[t, key], s.loc[t, lo], s.loc[t, hi]) for t in (0.2, 0.25, 0.3, 0.4)])
+        rows.append([("Clinical, vs better default" if m == "Clinical" else sh(m))] + [cic(s.loc[t, key], s.loc[t, lo], s.loc[t, hi]) for t in (0.2, 0.25, 0.3, 0.4)])
         if m == "Clinical":
             rows.append("MID")
     parts.append(table("Decision Curves: Net Benefit of the Clinical Model Against the Better Default Strategy, and Difference of Each Model from the Clinical Model (Pooled External Cohort; Bootstrap 95\\% CI)",
@@ -307,15 +319,45 @@ def supp_tables():
         rows.append([r.development.replace("All I-SPY2 arms", "All arms").replace("I-SPY2 control arm only", "Control arm"), r.model, r.collection,
                      ci(r.auc, r.auc_lo, r.auc_hi, dash=True), f"{r.e_over_o:.2f}", f2(r.intercept), f2(r.slope), "--" if pd.isna(r.diff) else ci(r.diff, r.ci_lo, r.ci_hi)])
     parts.append(table("Tabular Models Developed on All I-SPY2 Arms or on the Control Arm Only: External Performance by Collection", "tab:s_ctl",
-                       ["Development", "Model", "Collection", "AUC (95\\% CI)", "E/O", "Intercept", "Slope", "$\\Delta$ vs clinical (95\\% CI)"], rows, "lllccccc",
-                       "Control arm: paclitaxel, or paclitaxel plus trastuzumab for HER2-positive disease (209 patients, 39 with pCR).", size="\\scriptsize"))
+                       ["Development", "Model", "Collection", "AUC (95\\% CI)", "E/O", "Intercept", "Slope", "$\\Delta$ (95\\% CI)"], rows, "lllccccc",
+                       "Control arm: paclitaxel, or paclitaxel plus trastuzumab for HER2-positive disease (209 patients, 39 with pCR). $\\Delta$: difference from the clinical model developed on the same patients.", size="\\scriptsize"))
     # per-collection, all models
     rows = []
     for m in PC.model.unique():
         s = PC[PC.model == m].set_index("collection")
-        rows.append([sh(m)] + [ci(s.loc[c, "diff"], s.loc[c, "ci_lo"], s.loc[c, "ci_hi"]) for c in ("Duke", "I-SPY1", "NACT", "Within-collection pairs")])
+        rows.append([sh(m)] + [cic(s.loc[c, "diff"], s.loc[c, "ci_lo"], s.loc[c, "ci_hi"]) for c in ("Duke", "I-SPY1", "NACT", "Within-collection pairs")])
     parts.append(table("AUC Difference from the Clinical Model Within Each External Collection, All Models with Per-Patient Predictions", "tab:s_percoll",
-                       ["Model", "Duke", "I-SPY1", "NACT", "Within-collection pairs"], rows, "lcccc", size="\\scriptsize"))
+                       ["Model", "Duke", "I-SPY1", "NACT", "Within pairs"], rows, "lcccc", size="\\scriptsize"))
+    # revision run: input dependency, positive controls, learning curves
+    f = os.path.join(REV, "rev_checks_dependency.csv")
+    if os.path.exists(f):
+        Dp = pd.read_csv(f)
+        rows = [[sh(r.model), "I-SPY2 test folds" if r.set == "test fold" else "External", f3(r.tab), f3(r.img), f3(r.mean_gd), f3(r.max_gd), f2(r.gate)] for r in Dp.itertuples()]
+        parts.append(table("Input Dependency of CARF-mix: Mean Absolute Change of the Output Logit When Inputs Are Permuted Between Patients", "tab:s_dep",
+                           ["Model", "Patients", "Tabular permuted", "Images permuted", "Mean $|g\\delta|$", "Max. $|g\\delta|$", "Mean gate"], rows, "llccccc",
+                           "Means over the five fold models; maximum over fold models and patients. In CARF (round 1 and round 2), permuting the tabular inputs changes the output by exactly zero by construction."))
+    f = os.path.join(REV, "rev_checks_positive_controls.csv")
+    if os.path.exists(f):
+        Pc = pd.read_csv(f)
+        tl = {"pe_mean_high": "Mean enhancement $>$ median", "frac_washout_high": "Washout fraction $>$ median", "vendor_ge": "Scanner vendor (GE)"}
+        nl = {"Image only, kinetic 3D ResNet": "Kinetic 3D ResNet", "Image only, pretrained 2.5D": "Pretrained 2.5D"}
+        rows = []
+        for (m, t), gq in Pc.groupby(["model", "target"], sort=False):
+            gq = gq.set_index("cohort")
+            a, b = gq.loc["I-SPY2 cross-validation"], gq.loc["External"]
+            rows.append([tl[t], nl[m], ci(a.auc, a.lo, a.hi, dash=True), ci(b.auc, b.lo, b.hi, dash=True)]
+                        + [f3(gq.loc[c, "auc"]) if c in gq.index else "--" for c in ("DUKE", "ISPY1", "NACT")])
+        parts.append(table("Positive Controls: AUC of Networks Trained on Targets with Known Answers, Using the Same Crops and Protocol as for pCR", "tab:s_pos",
+                           ["Target", "Network", "I-SPY2 AUC (95\\% CI)", "External AUC (95\\% CI)", "Duke", "I-SPY1", "NACT"], rows, "llccccc",
+                           "Median: the I-SPY2 median of the feature. I-SPY2: fivefold cross-validation ($n=980$; 970 for washout fraction, which is undefined in 10 tumors). External: $n=526$, including patients without a recorded pCR. Per-collection AUC is not defined (--) where a collection contains one class only.", size="\\scriptsize"))
+    f = os.path.join(REV, "rev_checks_learning_curves.csv")
+    if os.path.exists(f):
+        Lc = pd.read_csv(f)
+        rows = [[sh(r.model), f"{100 * r.fraction:.0f}", "--" if pd.isna(r.n_train) else f"{r.n_train:.0f}", "--" if pd.isna(r.train_auc_mean) else f"{r.train_auc_mean:.2f} ({r.train_auc_min:.2f}--{r.train_auc_max:.2f})",
+                 ci(r.dev_auc, r.dev_lo, r.dev_hi, dash=True), ci(r.ext_auc, r.ext_lo, r.ext_hi, dash=True)] for r in Lc.itertuples()]
+        parts.append(table("Learning Curves for pCR: AUC by Share of Each Training Fold Used", "tab:s_lc",
+                           ["Network", "Share, \\%", "Training $n$", "Training AUC (range)", "Held-out AUC (95\\% CI)", "External AUC (95\\% CI)"], rows, "lccccc",
+                           "Training AUC: mean and range over the five folds, computed on the patients used for fitting, at the weights kept by early stopping. The 100\\% rows are the round-2 models; their training AUC was not recorded."))
     return "\n".join(parts)
 
 

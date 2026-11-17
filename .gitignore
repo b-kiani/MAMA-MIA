@@ -21,3 +21,4 @@ paper/jbhi/*.out
 paper/jbhi/rev_*.tex
 paper/jbhi/*_v1.tex
 paper/jbhi/rev_numbers.json
+results/revision/raw/

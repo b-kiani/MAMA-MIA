@@ -97,7 +97,7 @@ def fig_forest(r1, r2):
     d = pd.DataFrame(rows, columns=["round", "model", "auc", "diff", "lo", "hi"])
     d["model"] = d.model.str.replace("CARF (proposed) ", "CARF, ", regex=False)
     groups = [("Round 1 (prespecified)", d[d["round"] == "Round 1"].sort_values("diff", ascending=False)),
-              ("Round 2 (secondary, post hoc)", d[d["round"] == "Round 2"].sort_values("diff", ascending=False))]
+              ("Round 2 (exploratory)", d[d["round"] == "Round 2"].sort_values("diff", ascending=False))]
     ys, labels, heads, yy = [], [], [], 0.0
     rows_ = []
     for name, g in groups:

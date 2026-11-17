@@ -91,23 +91,22 @@ def learning_curves():
 
 def figure(pc, lc, ov):
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 7})
-    fig, ax = plt.subplots(1, 3, figsize=(7.0, 2.5))
+    fig, ax = plt.subplots(1, 3, figsize=(7.0, 2.9), gridspec_kw={"width_ratios": [1.0, 1.0, 1.0]})
     a = ax[0]  # positive controls
     if pc is not None:
         s = pc[pc.cohort.isin(["I-SPY2 cross-validation", "External"])]
         labs, k = [], 0
         for t in TARGET:
             for m in NET:
-                for coh, col, off in (("I-SPY2 cross-validation", BLUE, 0.16), ("External", ORANGE, -0.16)):
+                for coh, col, off in (("I-SPY2 cross-validation", INK, -0.17), ("External", ORANGE, 0.17)):
                     r = s[(s.model == m) & (s.target == t) & (s.cohort == coh)]
                     if len(r):
                         r = r.iloc[0]
                         a.errorbar(r.auc, k + off, xerr=[[r.auc - r.lo], [r.hi - r.auc]], fmt="o", ms=3, color=col, elinewidth=0.9)
                 labs.append(f"{TARGET[t].split(' (')[0]}\n{NET[m]}"); k += 1
         a.set_yticks(range(len(labs))); a.set_yticklabels(labs, fontsize=5.8); a.invert_yaxis()
-        a.axvline(0.5, color=GREY, lw=0.7, ls="--"); a.set_xlim(0.4, 1.0)
-        a.plot([], [], "o", ms=3, color=BLUE, label="I-SPY2 CV"); a.plot([], [], "o", ms=3, color=ORANGE, label="External")
-        a.legend(fontsize=5.8, frameon=False, loc="lower right")
+        a.axvline(0.5, color=GREY, lw=0.7, ls="--"); a.set_xlim(0.4, 1.03)
+        a.plot([], [], "o", ms=3, color=INK, label="I-SPY2 cross-validation"); a.plot([], [], "o", ms=3, color=ORANGE, label="External")
     a.set_xlabel("AUC (95% CI)"); a.set_title("a  Positive controls", fontsize=7.4, loc="left")
     a = ax[1]  # learning curves
     if lc is not None:
@@ -115,26 +114,32 @@ def figure(pc, lc, ov):
             s = lc[lc.model == m]
             if not len(s):
                 continue
-            a.errorbar(100 * s.fraction, s.dev_auc, yerr=[s.dev_auc - s.dev_lo, s.dev_hi - s.dev_auc], fmt="o-", ms=3, lw=1, color=col, label=f"{NET[m]}, held-out fold")
-            t = s[s.get("train_auc_mean").notna()] if "train_auc_mean" in s else s.iloc[:0]
-            a.plot(100 * t.fraction, t.train_auc_mean, "s--", ms=3, lw=1, color=col, mfc="white", label=f"{NET[m]}, training patients")
-        a.axhline(0.5, color=GREY, lw=0.7, ls="--"); a.set_xticks([25, 50, 100]); a.set_ylim(0.4, 1.02)
-        a.legend(fontsize=5.4, frameon=False, loc="upper left")
+            a.errorbar(100 * s.fraction, s.dev_auc, yerr=[s.dev_auc - s.dev_lo, s.dev_hi - s.dev_auc], fmt="o-", ms=3, lw=1, color=col)
+            t = s[s["train_auc_mean"].notna()] if "train_auc_mean" in s else s.iloc[:0]
+            a.plot(100 * t.fraction, t.train_auc_mean, "s--", ms=3, lw=1, color=col, mfc="white")
+        a.axhline(0.5, color=GREY, lw=0.7, ls="--"); a.set_xticks([25, 50, 100]); a.set_ylim(0.4, 1.03)
     a.set_xlabel("Share of each training fold used, %"); a.set_ylabel("pCR AUC"); a.set_title("b  Learning curves", fontsize=7.4, loc="left")
     a = ax[2]  # overfitting test
     if ov is not None:
         for m, col in zip(NET, (BLUE, GREEN)):
             s = ov[ov.model == m]
-            a.plot(s.epoch, s.train_auc, "o-", ms=2.5, lw=1, color=col, label=f"{NET[m]}, 120 training patients")
-            a.plot(s.epoch, s.heldout_auc, "s--", ms=2.5, lw=1, color=col, mfc="white", label=f"{NET[m]}, 200 held-out")
-        a.axhline(0.5, color=GREY, lw=0.7, ls="--"); a.set_ylim(0.4, 1.02)
-        a.legend(fontsize=5.4, frameon=False, loc="center right")
+            a.plot(s.epoch, s.heldout_auc, "o-", ms=2.5, lw=1, color=col)
+            a.plot(s.epoch, s.train_auc, "s--", ms=2.5, lw=1, color=col, mfc="white")
+        a.axhline(0.5, color=GREY, lw=0.7, ls="--"); a.set_ylim(0.4, 1.03)
     a.set_xlabel("Epoch"); a.set_ylabel("pCR AUC"); a.set_title("c  Overfitting test", fontsize=7.4, loc="left")
+    from matplotlib.lines import Line2D
+    hs = [Line2D([], [], color=BLUE, marker="o", ms=3, lw=1, label="Kinetic 3D ResNet, held-out patients"),
+          Line2D([], [], color=BLUE, marker="s", ms=3, lw=1, ls="--", mfc="white", label="Kinetic 3D ResNet, training patients"),
+          Line2D([], [], color=GREEN, marker="o", ms=3, lw=1, label="Pretrained 2.5D, held-out patients"),
+          Line2D([], [], color=GREEN, marker="s", ms=3, lw=1, ls="--", mfc="white", label="Pretrained 2.5D, training patients")]
+    ha = [Line2D([], [], color=INK, marker="o", ms=3, lw=0, label="I-SPY2 cross-validation"), Line2D([], [], color=ORANGE, marker="o", ms=3, lw=0, label="External")]
+    fig.add_artist(fig.legend(handles=ha, loc="lower left", ncol=1, fontsize=6, frameon=False, bbox_to_anchor=(0.2, 0.0), title="Panel a", title_fontsize=6))
+    fig.legend(handles=hs, loc="lower right", ncol=2, fontsize=6, frameon=False, bbox_to_anchor=(0.99, 0.0), title="Panels b and c", title_fontsize=6)
     for a in ax:
         for sp in ("top", "right"):
             a.spines[sp].set_visible(False)
         a.tick_params(labelsize=6.2)
-    fig.tight_layout(w_pad=0.8)
+    fig.tight_layout(rect=(0, 0.13, 1, 1), w_pad=0.8)
     fig.savefig(os.path.join(FIG, "fig_checks.pdf")); fig.savefig(os.path.join(FIG, "fig_checks.png"), dpi=300)
     plt.close(fig)
 

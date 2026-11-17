@@ -342,7 +342,7 @@ def layout(docx_in, docx_out, title_paras):
             rpr = r.find(q("w:rPr"))
             if rpr is None:
                 rpr = etree.Element(q("w:rPr")); r.insert(0, rpr)
-            set_size(rpr, 17 if ONECOL else 15)
+            set_size(rpr, (17 if ncol <= 4 else 15) if ONECOL else 15)
     for kind, el in marks:
         prev = el.getprevious()
         if kind == "FULLWIDTHSTART":
