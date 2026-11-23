@@ -23,3 +23,7 @@ paper/jbhi/*_v1.tex
 paper/jbhi/rev_numbers.json
 results/revision/raw/
 paper/jbhi/main_r2_before.tex
+paper/jbhi/rev_opt_summary.tex
+paper/jbhi/rev_nested_summary.tex
+paper/jbhi/rev2_numbers.json
+results/revision2/raw/

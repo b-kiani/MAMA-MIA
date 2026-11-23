@@ -101,14 +101,13 @@ def main():
         sel = S[S.selected].iloc[0]
         N["opt"] = {k: (float(v) if isinstance(v, (int, float, np.floating, np.integer, bool, np.bool_)) else str(v)) for k, v in sel.items()}
         N["opt_all"] = S.round(4).to_dict(orient="records")
-        rows = [[CFG[r.config] + (" (selected)" if r.selected else ""), f"{r.train_auc_mean:.2f} ({r.train_auc_min:.2f}--{r.train_auc_max:.2f})",
-                 f"{r.epochs_run_mean:.0f}; {r.epoch_kept_mean:.0f}", f"{r.oof_auc:.3f} ({r.oof_lo:.3f}--{r.oof_hi:.3f})",
-                 f"{r.ext_auc:.3f} ({r.ext_lo:.3f}--{r.ext_hi:.3f})", ci(r["diff"], r.ci_lo, r.ci_hi)] for _, r in S.iterrows()]
+        rows = [[CFG[r.config] + (" (selected)" if r.selected else ""), ci(r["diff"], r.ci_lo, r.ci_hi)]
+                + [ci(r[f"diff_{c}"], r[f"lo_{c}"], r[f"hi_{c}"]) for c in ("Duke", "I-SPY1", "NACT")] for _, r in S.iterrows()]
         open(os.path.join(HERE, "rev_opt_summary.tex"), "w").write(table(
-            "Optimization Study for the Kinetic 3D ResNet Trained from Scratch (Post Hoc)", "tab:s_opt",
-            ["Configuration", "Training AUC (range)", "Epochs run; kept", "I-SPY2 OOF AUC (95\\% CI)", "External AUC (95\\% CI)", "$\\Delta$ vs clinical (95\\% CI)"],
-            rows, "lccccc",
-            "Training AUC: non-augmented training patients of each fold, at the kept weights (mean and range over five folds). Selection: highest I-SPY2 out-of-fold AUC; the selected configuration's internal AUC is optimistic. Configurations were fixed before the run (paper/analysis\\_plan\\_revision2.md)."))
+            "Optimization Study: External AUC Difference from the Clinical Model, Pooled and Within Each Collection (95\\% CI)", "tab:s_opt",
+            ["Configuration", "Pooled external", "Duke", "I-SPY1", "NACT"],
+            rows, "lcccc",
+            "Paired DeLong differences. Training and internal results are in main Table V. The narrow-network configuration was not completed. Configurations were fixed before the run (paper/analysis\\_plan\\_revision2.md)."))
         # figure: training vs held-out AUC per configuration
         plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 7})
         fig, ax = plt.subplots(figsize=(4.6, 2.4))
@@ -155,7 +154,7 @@ def main():
                  f"{r.ext_auc_as_run:.3f}", f"{r.ext_auc_nested:.3f} ({r.ext_lo:.3f}--{r.ext_hi:.3f})", ci(r.ext_diff, r.ext_diff_lo, r.ext_diff_hi)] for r in R.itertuples()]
         open(os.path.join(HERE, "rev_nested_summary.tex"), "w").write(table(
             "Anchored Models Refitted with Fully Nested Preprocessing (Post Hoc)", "tab:s_nested",
-            ["Model", "Internal AUC, as run", "Internal AUC, nested (95\\% CI)", "Internal $\\Delta$ vs clinical", "External AUC, as run", "External AUC, nested (95\\% CI)", "External $\\Delta$ vs clinical"],
+            ["Model", "Int., as run", "Int., nested (95\\% CI)", "Int. $\\Delta$ vs clinical", "Ext., as run", "Ext., nested (95\\% CI)", "Ext. $\\Delta$ vs clinical"],
             rows, "lcccccc",
             f"Internal: I-SPY2 out-of-fold; the nested clinical model's out-of-fold AUC was {oc[0]:.3f}. External $\\Delta$: paired DeLong difference from the clinical model fitted on all of I-SPY2. Training ran on the GPU with the round-2 protocol; small differences from the as-run values also reflect the new training code and random initialization."))
     # ------------------------------------------------------------ overfitting test
