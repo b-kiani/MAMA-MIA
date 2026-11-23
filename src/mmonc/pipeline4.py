@@ -158,7 +158,7 @@ class Fast:
                     loss = F.binary_cross_entropy_with_logits(r["logit"].float(), b["y"])
                     if "gate" in r:
                         aux = F.binary_cross_entropy_with_logits((b["z_clin"] + r["delta"]).float(), b["y"])
-                        loss = loss + aux_w * aux + 0.01 * r["gate"].float().mean()
+                        loss = loss + aux_w * aux + getattr(model, "gate_penalty", 0.01) * r["gate"].float().mean()
                 opt.zero_grad(set_to_none=True)
                 scaler.scale(loss).backward()
                 scaler.unscale_(opt)

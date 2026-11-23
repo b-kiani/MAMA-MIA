@@ -31,17 +31,29 @@ KIN_NAMES = ["log_vol_mm3", "extent_mm", "surface_ratio", "log_ftv_mm3", "ftv_fr
 SER_NAMES = ["pe_late_mean", "ser_mean", "ser_median", "ser_p90", "frac_washout", "frac_plateau", "frac_persistent"]
 
 
-def kinetic_features(pre, early, late, mask, has_late=True):
-    """Enhancement kinetics inside a tumour mask on a 1 mm grid.
+def kinetic_features(pre, early, late, mask, has_late=True, sigma=1.0, floor=0.2, ser_floor=0.05, ser_clip=5.0,
+                     mask_op=0, min_enh=10):
+    """Enhancement kinetics inside a tumour mask on a 1 mm grid, exactly as implemented:
 
-    PE = (early - pre) / pre; SER = (early - pre) / (late - pre). FTV is the volume with PE >= 0.7,
-    the definition used in the I-SPY trials.
+      base = max(G_sigma * pre, floor * mean(pre > 0 in the crop))     (smoothed, floored denominator)
+      PE   = (early - pre) / base ;  PE_late = (late - pre) / base
+      SER  = clip(PE / max(PE_late, ser_floor), 0, ser_clip), on voxels with PE >= 0.7, only if >= min_enh such voxels
+      PE-threshold volume = number of mask voxels with PE >= 0.7 (not the official I-SPY FTV, which adds
+      background filtering and connectivity criteria).
+    The defaults reproduce the round-2 features; the keyword arguments give the sensitivity variants
+    (mask_op > 0 dilates and < 0 erodes the mask by that many voxels).
     """
     from scipy import ndimage as ndi
 
     m = mask.astype(bool)
+    if mask_op > 0:
+        m = ndi.binary_dilation(m, iterations=mask_op)
+    elif mask_op < 0:
+        e = ndi.binary_erosion(m, iterations=-mask_op)
+        m = e if e.sum() >= 10 else m
     ref = float(pre[pre > 0].mean()) if (pre > 0).any() else 1.0
-    base = np.maximum(ndi.gaussian_filter(pre.astype(np.float32), 1.0), 0.2 * ref)
+    sm = ndi.gaussian_filter(pre.astype(np.float32), sigma) if sigma > 0 else pre.astype(np.float32)
+    base = np.maximum(sm, floor * ref)
     pe = (early - pre) / base
     pel = (late - pre) / base
     v = float(m.sum())
@@ -71,9 +83,9 @@ def kinetic_features(pre, early, late, mask, has_late=True):
         f["rim_core_ratio"] = float(pe[rim].mean() / (abs(pe[core].mean()) + 1e-3))
     if has_late:
         f["pe_late_mean"] = float(pel[m].mean())
-        if enh.sum() >= 10:
-            ser = pe[enh] / np.maximum(pel[enh], 0.05)
-            ser = np.clip(ser, 0, 5)
+        if enh.sum() >= min_enh:
+            ser = pe[enh] / np.maximum(pel[enh], ser_floor)
+            ser = np.clip(ser, 0, ser_clip)
             f["ser_mean"], f["ser_median"], f["ser_p90"] = float(ser.mean()), float(np.median(ser)), float(np.percentile(ser, 90))
             f["frac_washout"] = float((ser > 1.1).mean())
             f["frac_plateau"] = float(((ser >= 0.9) & (ser <= 1.1)).mean())

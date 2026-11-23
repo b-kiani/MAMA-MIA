@@ -1,7 +1,10 @@
 """Models: clinical anchor, 3D image encoder, fusion baselines and CARF."""
 from __future__ import annotations
 
+import os
+
 import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -243,6 +246,26 @@ class MonaiImageOnly(nn.Module):
         return {"logit": out.reshape(-1)}
 
 
+_LOGGED = set()
+
+
+def _log_weights(net):
+    """Record which pretrained weights were loaded: identifier, checkpoint file and its SHA-256, and a checksum of
+    the loaded first-layer weights (logged once per process)."""
+    import hashlib
+
+    import torchvision
+
+    w = torchvision.models.ResNet18_Weights.IMAGENET1K_V1
+    f = os.path.join(torch.hub.get_dir(), "checkpoints", os.path.basename(w.url))
+    if f in _LOGGED:
+        return
+    _LOGGED.add(f)
+    sha = hashlib.sha256(open(f, "rb").read()).hexdigest() if os.path.exists(f) else "missing"
+    print(f"PRETRAINED_WEIGHTS_LOADED id=ResNet18_Weights.IMAGENET1K_V1 url={w.url} file_sha256={sha} "
+          f"conv1_sum={float(net.conv1.weight.detach().double().sum()):.6f} torchvision={torchvision.__version__}", flush=True)
+
+
 class SliceEncoder(nn.Module):
     """ImageNet-pretrained 2D ResNet applied to every slice. Input (B, S, 3, P, P) -> (B, S, 512)."""
 
@@ -255,8 +278,12 @@ class SliceEncoder(nn.Module):
             net = torchvision.models.resnet18(weights="IMAGENET1K_V1" if pretrained else None)
             self.pretrained = pretrained
         except Exception as e:  # noqa: BLE001  (no internet): say so loudly, never silently
+            if os.environ.get("MMONC_REQUIRE_PRETRAINED"):  # third-review runs: no fallback allowed
+                raise RuntimeError(f"pretrained weights required but unavailable: {e!r}") from e
             print(f"PRETRAINED_WEIGHTS_UNAVAILABLE {e!r}; using random initialisation", flush=True)
             net = torchvision.models.resnet18(weights=None)
+        if self.pretrained:
+            _log_weights(net)
         net.fc = nn.Identity()
         self.net, self.out_dim = net, 512
 
@@ -330,6 +357,24 @@ class CARFMix25D(CARFMix):
     image_tokens = CARF25D.image_tokens
 
 
+class CARFAbl25D(CARFMix25D):
+    """Third-review factorial ablation on the pretrained 2.5D encoder: token mixing on/off, bounded residual
+    on/off, gate regularisation on/off. (mix, bound, gate_pen) = (1, 1, 1) is CARFMix25D; (0, 0, 1) is CARF25D."""
+
+    def __init__(self, n_tab: int, mix: bool = True, bound: bool = True, gate_pen: bool = True, dim: int = 128, **kw):
+        super().__init__(n_tab, dim=dim, **kw)
+        self.use_mix, self.use_bound = bool(mix), bool(bound)
+        self.gate_penalty = 0.01 if gate_pen else 0.0
+        if not self.use_mix:
+            del self.mix
+
+    def mix_tokens(self, h):
+        return self.mix(h) if self.use_mix else h
+
+    def bound_delta(self, raw):
+        return self.bound * torch.tanh(raw / self.bound) if self.use_bound else raw
+
+
 class WholeBreast3D(nn.Module):
     """Large-context baseline adapted from Joo et al. (Sci Rep 2021): a 3D ResNet on the
     whole-breast early subtraction volume; optional late fusion with the clinical variables
@@ -393,6 +438,9 @@ def build(name: str, n_tab: int, widths=(32, 64, 128, 256), dim: int = 128, size
         return CARFMix(n_tab, dim=dim, widths=widths, in_ch=6)
     if name == "carfm_25d":
         return CARFMix25D(n_tab, dim=dim)
+    if name.startswith("abl25d_"):  # abl25d_m{0,1}b{0,1}g{0,1}
+        f = name.split("_")[1]
+        return CARFAbl25D(n_tab, mix=f[1] == "1", bound=f[3] == "1", gate_pen=f[5] == "1", dim=dim)
     if name == "wb_img":
         return WholeBreast3D(fusion=False)
     if name == "wb_fusion":
