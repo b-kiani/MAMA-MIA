@@ -201,7 +201,7 @@ class Rev3:
             devset = ctl if r["subset"] == "ctl" else np.sort(np.random.default_rng(int(r["subset"][3:])).choice(f.dev, len(ctl), replace=False))
         if r["folds"] == "regimen":
             grp = tb.nac_agent.iloc[devset].map({a: g for g, aa in REGIMEN_GROUPS.items() for a in aa}).to_numpy()
-            splits = [(np.flatnonzero(grp != g), np.flatnonzero(grp == g)) for g in REGIMEN_GROUPS]
+            splits = [(np.flatnonzero(grp != g), np.flatnonzero(grp == g)) for g in REGIMEN_GROUPS if (grp == g).sum() >= 10]
         else:
             splits = list(StratifiedKFold(2 if self.synthetic else 5, shuffle=True, random_state=seed).split(devset, y[devset]))
         Xt = f.Xc if r["tab"] == "clin" else np.hstack([f.Xc, f.Xk])
