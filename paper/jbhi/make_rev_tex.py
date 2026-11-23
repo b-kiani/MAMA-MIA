@@ -145,17 +145,17 @@ Kinetic 3D ResNet, image only & 2 & 0.57 (0.53--0.61) & 0.52 (0.46--0.58) & $-$0
             NUM[m] = {"int": a[0], "ext": b[0], "diff": d["diff"], "lo": d["ci_lo"], "hi": d["ci_hi"], "p": d["p"]}
     ph = stats.holm(np.array(ps)) if ps else []
     for (m, a, b, d), q in zip(got, ph):
-        rows.append(f"{sh(m)} & R & {ci(*a, f=f2, dash=True)} & {ci(*b, f=f2, dash=True)} & {ci(d['diff'], d['ci_lo'], d['ci_hi'])} & {pval(q)}\\\\")
+        rows.append(f"{sh(m)} & 3 & {ci(*a, f=f2, dash=True)} & {ci(*b, f=f2, dash=True)} & {ci(d['diff'], d['ci_lo'], d['ci_hi'])} & {pval(q)}\\\\")
     for m in REVMODELS:
         if m not in [g[0] for g in got]:
-            rows.append(f"{sh(m)} & R & pending & pending & pending & --\\\\")
+            rows.append(f"{sh(m)} & 3 & pending & pending & pending & --\\\\")
     NUM["n_rev_models"] = len(got)
     body = static + "\n" + "\n".join(rows)
     return ("\\begin{table}[!t]\n\\caption{Internal and External Discrimination of All Models}\n\\label{tab:all}\n\\centering\n\\footnotesize\n"
             "\\setlength{\\tabcolsep}{4pt}\n\\begin{tabular}{llcccc}\n\\toprule\n"
             "Model & Stage & Internal AUC (95\\% CI) & External AUC (95\\% CI) & External $\\Delta$ vs clinical (95\\% CI) & Holm $P$\\\\\n\\midrule\n"
             + body + "\n\\bottomrule\n"
-            "\\multicolumn{6}{p{0.94\\linewidth}}{\\scriptsize Stage 1: round~1 (CARF vs clinical is the confirmatory comparison; the others are secondary). Stage 2: round~2 (exploratory, adaptive). Stage R: revision (exploratory, post hoc). Internal: I-SPY2 fivefold cross-validation ($n=980$). External: Duke, I-SPY1 and NACT ($n=511$; 124 with pCR). $\\Delta$: paired DeLong difference. Confidence intervals are unadjusted; only the $P$ values are Holm-adjusted, within each stage (the stage-1 family also included the CARF seeds and ablations), so an interval excluding 0 can accompany an adjusted $P$ above .05. The unadjusted $P$ for the confirmatory comparison is .15. Exploratory $P$ values are descriptive.}\\\\\n"
+            "\\multicolumn{6}{p{0.94\\linewidth}}{\\scriptsize Stage 1: round~1 (CARF vs clinical is the confirmatory comparison; the others are secondary). Stage 2: round~2 (exploratory, adaptive). Stage 3: round~3 (exploratory, post hoc). Internal: I-SPY2 fivefold cross-validation ($n=980$). External: Duke, I-SPY1 and NACT ($n=511$; 124 with pCR). $\\Delta$: paired DeLong difference. Confidence intervals are unadjusted; only the $P$ values are Holm-adjusted, within each stage (the stage-1 family also included the CARF seeds and ablations), so an interval excluding 0 can accompany an adjusted $P$ above .05. The unadjusted $P$ for the confirmatory comparison is .15. Exploratory $P$ values are descriptive.}\\\\\n"
             "\\end{tabular}\n\\end{table}\n")
 
 
