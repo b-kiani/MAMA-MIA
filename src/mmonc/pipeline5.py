@@ -86,6 +86,10 @@ QUEUES = {"q0": _queue_q0, "q1": _queue_q1,
           # third-review follow-up: repeats of CARF-mix with the kinetic 3D encoder (seeds 1 and 2 failed with a GPU memory
           # error in the first run; seeds 3 and 4 added so that all repeated models have five seeds), one queue per GPU
           "q3a": lambda: [R("carfm_k", seed=s) for s in (1, 3)], "q3b": lambda: [R("carfm_k", seed=s) for s in (2, 4)],
+          # fourth review: fully nested late fusion (seeds 0-4 and regimen-held-out folds)
+          "q4a": lambda: [R("lfnest_25d", seed=s) for s in (0, 1, 2)],
+          "q4b": lambda: [R("lfnest_25d", seed=s) for s in (3, 4)] + [R("lfnest_25d", folds="regimen")],
+          "smoke4": lambda: [R("lfnest_25d", "orig"), R("lfnest_25d", "orig", folds="regimen")],
           "smoke": lambda: [R("s25d", "orig"), R("carfm_25d", labels=("sig", "0.05", 0), tab="clin"), R("abl25d_m0b1g0", labels=("null", 0), tab="clin"),
                             R("carfm_k", seed=1), R("s25d", subset="ctl"), R("carfm_25d", folds="regimen"), R("image_only_k", "lps_fov")]}
 
@@ -186,6 +190,8 @@ class Rev3:
 
     # ------------------------------------------------------------------ one run
     def run(self, r):
+        if r["model"] == "lfnest_25d":
+            return self.run_lfnest(r)
         rid = run_id(r)
         os.makedirs(os.path.join(self.out, "preds"), exist_ok=True)
         fn = os.path.join(self.out, "preds", f"pred_{self.tag}_{len(self._done())}.csv")
@@ -284,6 +290,86 @@ class Rev3:
         pd.concat([old, pd.DataFrame([S])], ignore_index=True).to_csv(self.summary, index=False)
         self.log(f"[{rid}] OOF {S['oof_auc']:.3f} (clin {S['oof_clin']:.3f}); ext {S['ext_auc']:.3f} (clin {S['ext_clin']:.3f}; "
                  f"fold models {S['ext_auc_fold_mean']:.3f}); train {S['train_auc_mean']:.3f}; {S['minutes']:.1f} min")
+        return S
+
+    # ------------------------------------------------------------------ fully nested late fusion (fourth review)
+    def run_lfnest(self, r):
+        """Late fusion with fully nested stacking. For each outer fold, the 2.5D image-only network is trained by an inner
+        fivefold cross-validation of the outer training partition only; the stacker (logistic regression on the clinical logit
+        and the image logit) is fitted on the inner out-of-fold predictions and applied to the outer test fold, using the mean
+        of the five inner image models and the clinical model fitted on the outer training partition. No model that produced a
+        stacker training input has seen the outer test fold."""
+        from sklearn.linear_model import LogisticRegression
+
+        rid = run_id(r)
+        os.makedirs(os.path.join(self.out, "preds"), exist_ok=True)
+        fn = os.path.join(self.out, "preds", f"pred_{self.tag}_{len(self._done())}.csv")
+        f = self.F(r["variant"])
+        seed = r["seed"]
+        y = f.y.copy()
+        tb, ext, devset = f.tb, f.ext, f.dev
+        if r["folds"] == "regimen":
+            grp = tb.nac_agent.iloc[devset].map({a: g for g, aa in REGIMEN_GROUPS.items() for a in aa}).to_numpy()
+            splits = [(np.flatnonzero(grp != g), np.flatnonzero(grp == g)) for g in REGIMEN_GROUPS if (grp == g).sum() >= 10]
+        else:
+            splits = list(StratifiedKFold(2 if self.synthetic else 5, shuffle=True, random_state=seed).split(devset, y[devset]))
+        Xt = np.hstack([f.Xc, f.Xk])
+        cfg = dict(ANCHORED)
+        if self.synthetic:
+            cfg.update(epochs=2, widths=(8, 16))
+        nd, ne = len(devset), len(ext)
+        P = {k: np.full(nd + ne, np.nan) for k in ("p", "zc", "img", "fold")}
+        LE, CE, IE = [], [], []
+        t0, nfit = time.time(), 0
+        for k, (tr, te) in enumerate(splits):
+            if _late():
+                self.log(f"[{rid}] SKIPPED from fold {k}: time budget")
+                return None
+            otr, ote = devset[tr], devset[te]
+            anc = ClinicalAnchor(n_splits=5)
+            z_in = anc.fit(f.Xc[otr], y[otr].astype(int))          # cross-fitted clinical logits, outer training patients
+            z_te, z_ex = anc.logit(f.Xc[ote]), anc.logit(f.Xc[ext])
+            img_in = np.full(len(otr), np.nan)
+            img_te, img_ex = [], []
+            inner = StratifiedKFold(2 if self.synthetic else 5, shuffle=True, random_state=100 + 1000 * seed + k).split(otr, y[otr])
+            for j, (itr, ite) in enumerate(inner):
+                s_kj = 10000 + 1000 * seed + 10 * k + j
+                tr2, va = f.inner_split(otr[itr], s_kj)
+                tab, miss = _standardise(Xt, Xt[tr2])
+                zero = np.zeros(len(y), np.float32)
+                model = build("s25d", tab.shape[1], cfg["widths"], 128)
+                f.fit(model, "sl", tr2, va, tab, miss, zero, cfg, seed=s_kj, lr=cfg.get("lr_pretrained"))
+                img_in[ite] = f.predict(model, "sl", otr[ite], tab, miss, zero)["logit"]
+                img_te.append(f.predict(model, "sl", ote, tab, miss, zero)["logit"])
+                img_ex.append(f.predict(model, "sl", ext, tab, miss, zero)["logit"])
+                nfit += 1
+                del model
+                torch.cuda.empty_cache()
+            st = LogisticRegression(C=1e4, max_iter=2000).fit(np.c_[z_in, img_in], y[otr].astype(int))
+            it, ie = np.mean(img_te, 0), np.mean(img_ex, 0)
+            P["p"][te] = st.predict_proba(np.c_[z_te, it])[:, 1]
+            P["zc"][te] = metrics.sigmoid(z_te)
+            P["img"][te] = metrics.sigmoid(it)
+            P["fold"][te] = k
+            LE.append(st.predict_proba(np.c_[z_ex, ie])[:, 1]); CE.append(metrics.sigmoid(z_ex)); IE.append(metrics.sigmoid(ie))
+            self.log(f"[{rid}] outer fold {k}: {nfit} image fits, {(time.time() - t0) / 60:.1f} min; stacker coef {np.round(st.coef_[0], 3).tolist()}")
+        full = ClinicalAnchor(n_splits=5)
+        full.fit(f.Xc[devset], y[devset].astype(int))
+        P["p"][nd:] = np.mean(LE, 0)
+        P["zc"][nd:] = metrics.sigmoid(full.logit(f.Xc[ext]))   # comparator as in the other runs
+        P["img"][nd:] = np.mean(IE, 0)
+        P["fold"][nd:] = -1
+        idx = np.r_[devset, ext]
+        D = pd.DataFrame({"case_id": tb.case_id.iloc[idx].to_numpy(), "collection": tb.collection.iloc[idx].to_numpy(), "y": y[idx].astype(int),
+                          "set": ["dev"] * nd + ["ext"] * ne, **P})
+        D.to_csv(fn, index=False, float_format="%.4g")
+        dv, ex = D[D.set == "dev"].dropna(subset=["p"]), D[D.set == "ext"]
+        S = {"run_id": rid, "file": os.path.basename(fn), **{k: (json.dumps(v) if isinstance(v, tuple) else v) for k, v in r.items()},
+             "n_dev": nd, "oof_auc": roc_auc_score(dv.y, dv.p), "oof_clin": roc_auc_score(dv.y, dv.zc),
+             "ext_auc": roc_auc_score(ex.y, ex.p), "ext_clin": roc_auc_score(ex.y, ex.zc), "minutes": (time.time() - t0) / 60, "image_fits": nfit}
+        old = pd.read_csv(self.summary) if os.path.exists(self.summary) else pd.DataFrame()
+        pd.concat([old, pd.DataFrame([S])], ignore_index=True).to_csv(self.summary, index=False)
+        self.log(f"[{rid}] nested late fusion: OOF {S['oof_auc']:.3f} (clin {S['oof_clin']:.3f}); ext {S['ext_auc']:.3f} (clin {S['ext_clin']:.3f}); {S['minutes']:.1f} min")
         return S
 
     def _done(self):
