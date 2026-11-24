@@ -334,8 +334,8 @@ def internal_table(S, L):
     m = tr[tr.analysis.str.startswith("matched training size")]
     c = m[m.group == "ctl"].iloc[0]
     rr = m[m.group.str.startswith("rnd")]
-    rows.append(["Late fusion trained on the I-SPY2 control arm ($n=209$)", "1", "--", "--", ci(c["diff"], c.lo, c.hi)])
-    rows.append(["Late fusion trained on random all-arm subsets ($n=209$)", str(len(rr)), "--", "--", rng(list(rr["diff"]))])
+    rows.append(["Late fusion$^{b}$ trained on the I-SPY2 control arm ($n=209$)", "1", "--", "--", ci(c["diff"], c.lo, c.hi)])
+    rows.append(["Late fusion$^{b}$ trained on random all-arm subsets ($n=209$)", str(len(rr)), "--", "--", rng(list(rr["diff"]))])
     t = table("Gains Over the Clinical Model Within the Development Trial and in the External Collections",
               "tab:internal", ["Model or analysis", "Seeds", "Internal $\\Delta$, I-SPY2 out-of-fold", "External $\\Delta$, harmonized", "External $\\Delta$, distributed"],
               rows, ">{\\raggedright\\arraybackslash}p{6.2cm}c" + C(2.9, 2.6, 2.6),
@@ -344,7 +344,7 @@ def internal_table(S, L):
               "investigational arms of I-SPY2, each predicted by models trained on the other groups; pooled out-of-group $\\Delta$. Training-size analyses: "
               "external $\\Delta$ on the distributed labels (not rescored). "
               + ("" if (L is not None and "oof_diff" in L.columns) else "$^{a}$Stacker cross-fitted on out-of-fold predictions generated over all of I-SPY2. ")
-              + "Group-level results in Supplementary Table~\\ref{S-tab:s_regimen4}.")
+              + "$^{b}$Earlier stacking, not fully nested; only external estimates are reported. Group-level results in Supplementary Table~\\ref{S-tab:s_regimen4}.")
     open(os.path.join(HERE, "rev4_tab_internal.tex"), "w").write(t)
 
 
