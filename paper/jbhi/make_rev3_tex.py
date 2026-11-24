@@ -85,8 +85,7 @@ def main_tables():
                "initialization; seed 0 reproduces earlier rounds. $\\Delta$: paired DeLong difference from the clinical model of the same seed (external: "
                "fitted on all of I-SPY2, so identical across seeds). External predictions are the mean of five fold models; single fold models are "
                "reported separately. Reorientation effect: external AUC with reoriented minus original inputs, same code, folds and seed "
-               "(kinetic 3D: compared with the round-3 nested refit). The two further seeds planned for CARF-mix 3D stopped with a GPU memory error and were "
-               "not repeated. OOF, out-of-fold; CARF, clinically anchored residual fusion.")
+               "(kinetic 3D: compared with the round-3 nested refit). CARF-mix 3D seeds 1--4 ran in a second Kaggle run (version 8). OOF, out-of-fold; CARF, clinically anchored residual fusion.")
     # recovery
     V = pd.read_csv(os.path.join(R3, "rev3_recovery.csv"))
     rows = []

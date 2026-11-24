@@ -223,6 +223,15 @@ def repeats(S, variant="lps"):
                 x = dl(e.y, e.zc, e[k])
                 folds.append({"model": nm, "seed": seed, "fold_model": int(k[2:]), "ext_auc": auc(e.y, e[k]), "ext_diff": x["diff"]})
             folds.append({"model": nm, "seed": seed, "fold_model": -1, "ext_auc": auc(e.y, e.p), "ext_diff": dl(e.y, e.zc, e.p)["diff"]})
+    j = os.path.join(os.path.dirname(RAW), "raw_3d", "carfm_k_repeats.json")
+    if variant == "lps" and os.path.exists(j):  # follow-up run (seeds 1-4 of CARF-mix 3D); statistics computed from its exported predictions
+        for x in json.load(open(j))["runs"]:
+            rows.append({"model": "carfm_k", "seed": x["seed"], "ext_auc": x["ext_auc"], "oof_auc": x["oof_auc"], "ext_ref": x["ext_clin"], "oof_ref": x["oof_clin"],
+                         "ext_diff": x["ext_diff"], "ext_lo": x["ext_lo"], "ext_hi": x["ext_hi"], "oof_diff": x["oof_diff"],
+                         "diff_DUKE": x["d_DUKE"], "diff_ISPY1": x["d_ISPY1"], "diff_NACT": x["d_NACT"],
+                         "corr_abs_ext": x["corr_abs_ext"], "corr_abs_oof": x["corr_abs_oof"], "gate_ext": x["gate_ext"]})
+            folds += [{"model": "carfm_k", "seed": x["seed"], "fold_model": k, "ext_auc": a} for k, a in enumerate(x["fold_auc"])]
+            folds.append({"model": "carfm_k", "seed": x["seed"], "fold_model": -1, "ext_auc": x["ext_auc"], "ext_diff": x["ext_diff"]})
     R, Fo = pd.DataFrame(rows), pd.DataFrame(folds)
     R.to_csv(os.path.join(OUT, f"rev3_repeats_{variant}.csv"), index=False)
     Fo.to_csv(os.path.join(OUT, f"rev3_fold_models_{variant}.csv"), index=False)
