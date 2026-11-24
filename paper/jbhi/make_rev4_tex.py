@@ -97,7 +97,7 @@ def rep_rows(M, S, L, endpoint):
 
 def main_table(M, S, L):
     rows = []
-    mark = {"ref": "", "c": "$^{\\dagger}$", "2": "$^{\\ddagger}$", "3": "$^{\\S}$"}
+    mark = {"ref": "", "c": "$^{\\dagger}$", "2": "$^{\\ddagger}$", "3": "\\textsuperscript{\\S}"}
     for r in rep_rows(M, S, L, "harmonized"):
         if r["stage"] == "ref":
             rows.append([r["name"], r["seeds"], ci(r["auc"], r["auc_lo"], r["auc_hi"]), "reference", "--",
@@ -116,7 +116,7 @@ def main_table(M, S, L):
               "inner split and initialization changed), the AUC and $\\Delta$ are for seed 0, the range is over seeds, and the per-collection $\\Delta$ "
               "and calibration are means over seeds. Calibration intercept (calibration-in-the-large) below 0: predicted probabilities too high. "
               "$^{\\dagger}$Prespecified confirmatory comparison (round~1, original inputs); historical analysis on the distributed labels in "
-              "Supplementary Table~\\ref{S-tab:s_matrix}. $^{\\ddagger}$Round~2 (exploratory). $^{\\S}$Round~3 and later (post hoc), reoriented inputs and nested anchors. "
+              "Supplementary Table~\\ref{S-tab:s_matrix}. $^{\\ddagger}$Round~2 (exploratory). \\textsuperscript{\\S}Round~3 and later (post hoc), reoriented inputs and nested anchors. "
               "All rows are rescorings of locked predictions; the external patients had been examined in earlier rounds.")
     open(os.path.join(HERE, "rev4_tab_main.tex"), "w").write(t)
 
