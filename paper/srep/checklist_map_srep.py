@@ -1,0 +1,33 @@
+"""Checklist locations for the Scientific Reports version (sections named; Results = R, Methods = M)."""
+TRIPOD = {
+"3a":"Introduction; Table~\\ref{tab:prior}","3b":"Introduction; M: Data and study design","3c":"Not addressed; subgroups by ancestry and age in Fig.~S3",
+"4":"Introduction (last paragraph)","5a":"M: Data and study design; Table 1","5b":"Table 1 (study periods); Table~\\ref{tab:timeline} (analysis dates)",
+"6a":"M: Data and study design; Table 1","6b":"M: Data and study design; Fig. 1","6c":"Table 1; R: Internal gains did not transfer",
+"7":"M: Image preprocessing; S4","8a":"M: Outcome definitions and harmonization; R: Study design and outcome audit; Table 1; S4",
+"8b":"Pathologists of the source studies; not reported in MAMA-MIA","8c":"Retrospective; outcomes assessed before and independently of this study",
+"9a":"M: Clinical comparator; M: Image preprocessing","9b":"M: Clinical comparator; M: Image preprocessing; S4",
+"9c":"Receptor status from source studies; expert masks (S4)","10":"Fixed by available data; what the evaluation could detect: M and R, signal-recovery control",
+"11":"M: Clinical comparator; S4; complete-case analysis S7","12a":"M: Data and study design; M: Analysis stages; M: Training; Fig. 1",
+"12b":"M: Imaging-based models; Table~S1; Table~S3","12c":"M: Clinical comparator; M: Imaging-based models; M: Training; Table~S1; S7",
+"12d":"M: Statistical analysis (within-collection); multi-source validation S7","12e":"M: Statistical analysis","12f":"Recalibration S7",
+"12g":"M: Training (fold ensemble; nested stacking)","13":"Not corrected; thresholds in S7","14":"Subgroup performance only (Fig.~S3)",
+"15":"Thresholds in S7","16":"M: Data and study design; Table 1; R: Internal gains did not transfer","17":"M: Data and study design",
+"18a":"Funding statement","18b":"Submission form","18c":"M: Analysis stages; S4; S6","18d":"Not registered","18e":"Data availability; Code availability",
+"18f":"Data availability; Code availability","19":"None","20a":"Fig. 1; R: Study design and outcome audit","20b":"Table 1","20c":"Table 1",
+"21":"Tables 2--4; S5--S7","22":"M: Imaging-based models; M: Training; Table~S1; S7; code","23a":"R: Representative imaging comparisons; Table 2; Fig. 2; Fig.~S3",
+"23b":"R: Representative imaging comparisons; Table 2; Table~\\ref{tab:percoll}","24":"Recalibration S7","25":"Discussion","26":"Discussion (limitations)",
+"27a":"Not applicable (research models)","27b":"Not applicable","27c":"Discussion"}
+CLAIM = {
+"3":"Introduction","4":"Introduction; M: Analysis stages","5":"M: Data and study design (retrospective)","6":"Introduction; M: Analysis stages",
+"7":"M: Data and study design; S4","8":"M: Data and study design; Fig. 1","9":"M: Image preprocessing; S4","10":"M: Data and study design; M: Analysis stages",
+"11":"M: Data and study design (public, de-identified; ethics)","12":"M: Clinical comparator; S4","13":"Table 1; S4; dataset publication",
+"14":"M: Outcome definitions; R: Study design and outcome audit; Table 1","15":"M: Outcome definitions; Discussion (limitations)",
+"16":"Expert masks from MAMA-MIA (S4)","17":"No new annotation (S4)","18":"Not assessed","19":"M: Data and study design; M: Training",
+"20":"Patient and collection level (M: Data and study design; M: Training)","21":"M: Data and study design; M and R: signal-recovery control",
+"22":"M: Imaging-based models; M: Clinically anchored residual fusion; Table~S1; S7","23":"Table~S2","24":"M: Imaging-based models (ImageNet; DINOv2 in S7)",
+"25":"M: Training; Table~S1; Algorithm~\\ref{alg:train}","26":"M: Training; optimization study (S7)","27":"M: Training (five fold models averaged)",
+"28":"M: Statistical analysis; Table~\\ref{tab:prior}","29":"M: Statistical analysis; R: Calibration and training variation",
+"30":"M: Signal-recovery control; R: Calibration and training variation; S6; S7","31":"Input dependency and gate analyses (S7)",
+"32":"M: Training; R: Internal gains did not transfer; Table 3","33":"M: Data and study design; Results","34":"Not applicable","35":"Fig. 1; Table 1",
+"36":"Table 1","37":"Results; Table 2; Fig.~S3","38":"Results; Table 2","39":"R: Calibration and training variation; R: Internal gains; S7",
+"40":"Discussion (limitations)","41":"Discussion","42":"M: Analysis stages; S4; repository","43":"Data availability; Code availability","44":"Funding statement"}

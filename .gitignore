@@ -34,3 +34,10 @@ paper/jbhi/rev4_*.tex
 paper/jbhi/main_r3.tex
 paper/jbhi/supp_r3.tex
 paper/jbhi/main_body4.tex
+# Scientific Reports version: manuscript files kept out of the public repo, as for JBHI
+paper/srep/*
+!paper/srep/make_srep_tables.py
+!paper/srep/assemble.py
+!paper/srep/build_supp_srep.py
+!paper/srep/checklist_map_srep.py
+!paper/srep/to_word_srep.py
