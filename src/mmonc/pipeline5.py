@@ -83,6 +83,9 @@ def _queue_q1():
 
 
 QUEUES = {"q0": _queue_q0, "q1": _queue_q1,
+          # third-review follow-up: repeats of CARF-mix with the kinetic 3D encoder (seeds 1 and 2 failed with a GPU memory
+          # error in the first run; seeds 3 and 4 added so that all repeated models have five seeds), one queue per GPU
+          "q3a": lambda: [R("carfm_k", seed=s) for s in (1, 3)], "q3b": lambda: [R("carfm_k", seed=s) for s in (2, 4)],
           "smoke": lambda: [R("s25d", "orig"), R("carfm_25d", labels=("sig", "0.05", 0), tab="clin"), R("abl25d_m0b1g0", labels=("null", 0), tab="clin"),
                             R("carfm_k", seed=1), R("s25d", subset="ctl"), R("carfm_25d", folds="regimen"), R("image_only_k", "lps_fov")]}
 
