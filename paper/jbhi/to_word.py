@@ -69,6 +69,11 @@ def preprocess(tex, prefix=""):
             out.append(tex[pos:m.start()] + f"\\{m.group(1)}{{{title}}}")
             pos = m.end()
         tex = "".join(out) + tex[pos:]
+    aux = os.path.join(HERE, "supp.aux")   # references into the supplement (xr-hyper, prefix S-)
+    if os.path.exists(aux):
+        for k, v in re.findall(r"\\newlabel\{([^}]*)\}\{\{([^}]*)\}", open(aux, encoding="utf-8").read()):
+            labels.setdefault("S-" + k, v)
+    tex = re.sub(r"\\usepackage\{xr-hyper\}|\\externaldocument(\[[^]]*\])?\{[^}]*\}", "", tex)
     tex = re.sub(r"\\ref\{([^}]*)\}", lambda m: labels.get(m.group(1), "?"), tex)
     tex = tex.replace("~", " ")
     tex = tex.replace("$<$", "\\textless{}").replace("$>$", "\\textgreater{}")
