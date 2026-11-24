@@ -35,6 +35,7 @@ def _subplots(*a, **k):
 def _save(fig, name):
     ax = fig.axes[0]
     if name == "fig_forest_all":
+        ax.set_yticklabels([t.get_text().replace("Clinical + FTV", "Clinical + PETV") for t in ax.get_yticklabels()])
         ax.set_xlabel("External AUC difference vs clinical model (95% CI)", fontsize=7)
         ax.tick_params(axis="y", labelsize=6.6)
         ax.tick_params(axis="x", labelsize=6.5)

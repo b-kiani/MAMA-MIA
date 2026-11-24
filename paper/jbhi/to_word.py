@@ -162,6 +162,7 @@ def preprocess(tex, prefix=""):
         endm = "\n\nFULLWIDTHEND" if star else ""
         return f"{mark}CAPTAB TABLE {k}. {cap}\n\n{body.strip()}{note}{endm}\n\n"
     tex = re.sub(r"\\begin\{table(\*?)\}\[[^\]]*\](.*?)\\end\{table\*?\}", tab, tex, flags=re.S)
+    tex = tex.replace(">{\\centering\\arraybackslash}", "").replace(">{\\raggedright\\arraybackslash}", "").replace(">{\\arraybackslash}", "")
     tex = tex.replace("\\toprule", "\\hline").replace("\\midrule", "\\hline").replace("\\bottomrule", "\\hline")
     return tex
 

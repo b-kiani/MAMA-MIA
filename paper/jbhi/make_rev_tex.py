@@ -226,16 +226,25 @@ def fig_percoll():
         yy = np.arange(len(order))[::-1]
         ax.axvspan(-0.03, 0.03, color=BLUE, alpha=0.10, lw=0)
         ax.axvline(0, color=GREY, lw=0.7)
-        ax.errorbar(s["diff"], yy, xerr=[s["diff"] - s.ci_lo, s.ci_hi - s["diff"]], fmt="o", ms=3, color=INK, ecolor=INK, elinewidth=0.9, capsize=0)
+        r3 = {"CARF-mix, kinetic", "CARF-mix, pretrained 2.5D", "DINOv2 linear probe + clinical", "Whole-breast 3D ResNet + clinical"}
+        for k, (m, y) in enumerate(zip(order, yy)):  # stage shown by marker: confirmatory square, round 2 filled, round 3 open
+            st = "c" if m.startswith("R1: ") else ("3" if m in r3 else "2")
+            ax.errorbar(s["diff"].iloc[k], y, xerr=[[s["diff"].iloc[k] - s.ci_lo.iloc[k]], [s.ci_hi.iloc[k] - s["diff"].iloc[k]]],
+                        fmt="s" if st == "c" else "o", ms=3.6, mfc="white" if st == "3" else INK, mec=INK, color=INK, ecolor=INK, elinewidth=0.9, capsize=0)
         ax.set_title(c if c != "Within-collection pairs" else "Within-collection pairs", fontsize=7.4)
         ax.set_xlim(-0.48, 0.2); ax.set_xticks([-0.4, -0.2, 0, 0.2])
         ax.tick_params(axis="x", labelsize=6.4)
         for sp in ("top", "right"):
             ax.spines[sp].set_visible(False)
         ax.grid(axis="x", color="#e5e7eb", lw=0.5)
-    axes[0].set_yticks(np.arange(len(order))[::-1]); axes[0].set_yticklabels([sh(m) for m in order], fontsize=6.8)
-    fig.supxlabel("AUC difference from the clinical model (95% CI)", fontsize=7.2, y=0.02)
-    fig.tight_layout(rect=(0, 0.03, 1, 1), w_pad=0.6)
+    axes[0].set_yticks(np.arange(len(order))[::-1]); axes[0].set_yticklabels([sh(m).replace("FTV", "PETV").replace("Whole-breast", "Larger-context") for m in order], fontsize=7.2)
+    fig.supxlabel("AUC difference from the clinical model (95% CI)", fontsize=7.4, y=0.02)
+    from matplotlib.lines import Line2D
+    hs = [Line2D([], [], marker="s", ms=4, color=INK, lw=0, label="Confirmatory (round 1)"),
+          Line2D([], [], marker="o", ms=4, color=INK, lw=0, label="Exploratory, adaptive (round 2)"),
+          Line2D([], [], marker="o", ms=4, mfc="white", mec=INK, lw=0, label="Post hoc (round 3)")]
+    fig.legend(handles=hs, loc="upper center", ncol=3, fontsize=7, frameon=False, bbox_to_anchor=(0.55, 1.0))
+    fig.tight_layout(rect=(0, 0.03, 1, 0.95), w_pad=0.6)
     fig.savefig(os.path.join(FIG, "fig_percoll.pdf")); fig.savefig(os.path.join(FIG, "fig_percoll.png"), dpi=300)
     plt.close(fig)
 
